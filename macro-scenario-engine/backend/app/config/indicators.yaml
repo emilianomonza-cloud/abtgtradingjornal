@@ -1,0 +1,324 @@
+# ═══════════════════════════════════════════════════════════════
+# TASSONOMIA INDICATORI
+# Mappa il titolo grezzo dell'evento di calendario su una categoria normalizzata.
+# `direzione`: +1 = un valore piu' ALTO e' potenzialmente positivo per la valuta
+#              -1 = un valore piu' ALTO e' potenzialmente NEGATIVO per la valuta
+#                   (es. disoccupazione, richieste sussidi, deficit commerciale)
+# `sottoscore`: quale sotto-score della SEZIONE 3.2 viene alimentato
+# `famiglia`  : determina l'half-life del decadimento (SEZIONE 3.3)
+# `sigma_default`: deviazione tipica actual-forecast usata finche' non c'e' storico
+#                  sufficiente (>= 6 rilasci) per stimarla dai dati.
+# `catena`    : identificativo della catena causale attivata (SEZIONE 3.1)
+# ═══════════════════════════════════════════════════════════════
+
+categorie:
+
+  RATE_DECISION:
+    etichetta: "Decisione tassi"
+    pattern:
+      - "interest rate decision"
+      - "official bank rate"
+      - "cash rate"
+      - "policy rate"
+      - "federal funds rate"
+      - "main refinancing rate"
+      - "overnight rate"
+      - "libor rate"
+      - "snb policy rate"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "decisione di tasso di interesse"
+      - "decisione del tasso di interesse"
+      - "decisione sui tassi"
+      - "tasso ufficiale"
+      # BCE: tre tassi con nomi propri, senza la parola "decisione"
+      - "tasso di rifinanziamento"
+      - "operazioni di rifinanziamento"
+      - "tasso sui depositi"
+      - "tasso di deposito"
+      - "deposit facility rate"
+      - "marginal lending"
+    sottoscore: rate_differential
+    direzione: 1
+    famiglia: policy
+    sigma_default: 0.10
+    catena: TASSI_CAPITALI_CAMBIO
+
+  MONETARY_STATEMENT:
+    etichetta: "Comunicato / minutes / conferenza stampa"
+    pattern:
+      - "monetary policy statement"
+      - "rate statement"
+      - "press conference"
+      - "meeting minutes"
+      - "monetary policy report"
+      - "fomc statement"
+      - "member .* speaks"
+      - "gov .* speaks"
+      - "president .* speaks"
+      - "governor .* speaks"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "conferenza stampa"
+      - "dichiarazione di politica monetaria"
+      - "rapporto sulla politica monetaria"
+      - "verbali"
+      - "discorso d"
+    sottoscore: cb_stance
+    direzione: 1
+    famiglia: policy
+    sigma_default: 0.0
+    catena: TASSI_CAPITALI_CAMBIO
+
+  CPI:
+    etichetta: "Inflazione al consumo"
+    pattern:
+      - "^cpi"
+      - "consumer price index"
+      - "inflation rate"
+      - "cpi y/y"
+      - "cpi m/m"
+      - "flash cpi"
+      - "national core cpi"
+      - "trimmed mean cpi"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "indice dei prezzi al consumo"
+      - '\bipc\b'
+    sottoscore: inflation_regime
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 0.20
+    catena: INFLAZIONE_COMPETITIVITA
+
+  CORE_CPI:
+    etichetta: "Inflazione core"
+    pattern:
+      - "core cpi"
+      - "core inflation"
+      - "core pce"
+      - "median cpi"
+      - "core hicp"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "indice dei prezzi core"
+      - "inflazione core"
+      - "ipc core"
+    sottoscore: inflation_regime
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 0.15
+    catena: INFLAZIONE_COMPETITIVITA
+
+  PPI:
+    etichetta: "Prezzi alla produzione"
+    pattern:
+      - "^ppi"
+      - "producer price"
+      - "input prices"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "prezzi alla produzione"
+      - '\bipp\b'
+    sottoscore: inflation_regime
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 0.30
+    catena: INFLAZIONE_COMPETITIVITA
+
+  WAGES:
+    etichetta: "Salari"
+    pattern:
+      - "average earnings"
+      - "average hourly earnings"
+      - "wage price index"
+      - "labor cost"
+      - "employment cost index"
+      - "negotiated wages"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "salari"
+      - "retribuzion"
+      - "costo del lavoro"
+      - "guadagno medio"
+    sottoscore: inflation_regime
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 0.20
+    catena: INFLAZIONE_COMPETITIVITA
+
+  GDP:
+    etichetta: "Prodotto Interno Lordo"
+    pattern:
+      - "^gdp"
+      - "gross domestic product"
+      - "prelim gdp"
+      - "final gdp"
+      - "advance gdp"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - '\bpil\b'
+      - "prodotto interno lordo"
+    sottoscore: growth_momentum
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 0.20
+    catena: PIL_CRESCITA
+
+  PMI_MANUF:
+    etichetta: "PMI manifatturiero"
+    pattern:
+      - "manufacturing pmi"
+      - "ism manufacturing"
+      - "factory pmi"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "pmi manifatturiero"
+      - "pmi settore manifatturiero"
+    sottoscore: growth_momentum
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 1.2
+    catena: PIL_CRESCITA
+    livello_neutro: 50.0
+
+  PMI_SERV:
+    etichetta: "PMI servizi / composito"
+    pattern:
+      - "services pmi"
+      - "ism services"
+      - "non-manufacturing pmi"
+      - "composite pmi"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "pmi servizi"
+      - "pmi dei servizi"
+      - "pmi composito"
+      - "pmi settore terziario"
+    sottoscore: growth_momentum
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 1.2
+    catena: PIL_CRESCITA
+    livello_neutro: 50.0
+
+  NFP:
+    etichetta: "Occupazione non agricola / variazione occupati"
+    pattern:
+      - "non-farm employment change"
+      - "non farm payrolls"
+      - "nonfarm payrolls"
+      - "employment change"
+      - "adp non-farm"
+      - "payroll"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "occupazione non agricola"
+      - "variazione dell'occupazione"
+      - "buste paga"
+    sottoscore: growth_momentum
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 60.0
+    catena: PIL_CRESCITA
+
+  UNEMPLOYMENT:
+    etichetta: "Tasso di disoccupazione"
+    pattern:
+      - "unemployment rate"
+      - "jobless rate"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "tasso di disoccupazione"
+    sottoscore: growth_momentum
+    direzione: -1
+    famiglia: ciclici
+    sigma_default: 0.15
+    catena: PIL_CRESCITA
+
+  JOBLESS_CLAIMS:
+    etichetta: "Richieste sussidi disoccupazione"
+    pattern:
+      - "unemployment claims"
+      - "jobless claims"
+      - "claimant count"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "richieste di sussidi"
+      - "sussidi di disoccupazione"
+      - "richieste iniziali"
+    sottoscore: growth_momentum
+    direzione: -1
+    famiglia: ciclici
+    sigma_default: 15.0
+    catena: PIL_CRESCITA
+
+  RETAIL_SALES:
+    etichetta: "Vendite al dettaglio"
+    pattern:
+      - "retail sales"
+      - "core retail sales"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "vendite al dettaglio"
+    sottoscore: growth_momentum
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 0.40
+    catena: PIL_CRESCITA
+
+  IND_PRODUCTION:
+    etichetta: "Produzione industriale"
+    pattern:
+      - "industrial production"
+      - "manufacturing production"
+      - "factory orders"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "produzione industriale"
+      - "produzione manifatturiera"
+      - "ordini di fabbrica"
+      - "ordinativi"
+    sottoscore: growth_momentum
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 0.60
+    catena: PIL_CRESCITA
+
+  CONFIDENCE:
+    etichetta: "Fiducia consumatori / imprese"
+    pattern:
+      - "consumer confidence"
+      - "consumer sentiment"
+      - "ifo business climate"
+      - "zew economic sentiment"
+      - "business confidence"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "fiducia dei consumatori"
+      - "fiducia delle imprese"
+      - "indicatore di fiducia"
+      - "clima ifo"
+      - "indice zew"
+    sottoscore: growth_momentum
+    direzione: 1
+    famiglia: ciclici
+    sigma_default: 2.0
+    catena: PIL_CRESCITA
+
+  TRADE_BALANCE:
+    etichetta: "Bilancia commerciale"
+    pattern:
+      - "trade balance"
+      - "goods trade balance"
+      - "merchandise trade"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "bilancia commerciale"
+    sottoscore: external_balance
+    direzione: 1
+    famiglia: strutturali
+    sigma_default: 1.5
+    catena: COMMERCIO_ESTERO
+
+  CURRENT_ACCOUNT:
+    etichetta: "Partite correnti"
+    pattern:
+      - "current account"
+      # --- nomi italiani del calendario MT5 (terminale localizzato) ---
+      - "partite correnti"
+      - "saldo del conto corrente"
+    sottoscore: external_balance
+    direzione: 1
+    famiglia: strutturali
+    sigma_default: 2.0
+    catena: BILANCIA_PAGAMENTI
+
+# Categoria assegnata quando nessun pattern corrisponde: l'evento viene
+# archiviato e mostrato in calendario ma NON alimenta gli score
+# (nessuna finta precisione su indicatori non modellati).
+categoria_default: OTHER

@@ -1,0 +1,44 @@
+{
+  "schema": "mse-audit-inventory/1",
+  "generato_il": "2026-08-16",
+  "branch": "claude/macro-scenario-engine-forex-pz6d08",
+  "progetto": {
+    "root": "macro-scenario-engine/",
+    "stack": [
+      "Python 3.11 FastAPI SQLite SQLAlchemy",
+      "Jinja2 server-side",
+      "MQL5 bridge"
+    ],
+    "test_verdi": 139
+  },
+  "allegati_sessione": [
+    {
+      "file": "CalendarHistoryExporter_1.mq5",
+      "sha256": "b21f459aeda85c06d339d50632ba9ac7a5cab98658e90bccaeba2103683f38e7",
+      "ruolo": "produttore dei file storici (schema mt5-calendar-export/1)",
+      "versionato_in": "mql5/Scripts/CalendarHistoryExporter.mq5"
+    },
+    {
+      "file": "CalendarHistoryExporter_DOC.md.docx",
+      "sha256": "5c7396d607c1cad63c92e0555700d2efe0781a6d965799d43413221bd2b3863f",
+      "ruolo": "documentazione del produttore",
+      "versionato_in": "mql5/Scripts/CalendarHistoryExporter_DOC.md"
+    }
+  ],
+  "drive": {
+    "cartella": "1agxv-F7ghCQSFNnjfZNX8512Mtv9tQ_v",
+    "contenuto": {
+      "FX_STRENGTH_DESK_HANDOFF_CLAUDE_CODE_1.docx": "1YrgL1XeATmukQuMMImtOG07GvGEOngX1",
+      "fx_production/api/scoring.py": "1aCRpWTOQDfjtkTrqpFaVk8ifEyGN8G5a",
+      "fx_production/api/signals.py": "1HH3pRRBsFaW7smW9c6y-1FORcovoQq1A",
+      "fx_production/api/data_fetcher.py": "1Pfi3BhH1c6dSGmKif3ds886Cs-1bEKek",
+      "fx_production/api/main.py": "1NeaqhUoQbwDN7z6Vv7_8VsIo3iVX06h7",
+      "fx_production/scripts/": "VUOTA — i file storici non sono ancora stati generati"
+    }
+  },
+  "file_storici": {
+    "stato": "NON_ANCORA_GENERATI",
+    "produttore": "mql5/Scripts/CalendarHistoryExporter.mq5 (da eseguire nel terminale MT5 dell'utente)",
+    "import_pronto": "POST /api/v1/admin/calendar/import-mt5-file oppure pagina /storico sezione 1"
+  }
+}

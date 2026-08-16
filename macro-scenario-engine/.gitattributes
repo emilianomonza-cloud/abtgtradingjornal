@@ -1,0 +1,7 @@
+# I file .bat DEVONO conservare i terminatori di riga CRLF di Windows:
+# con terminatori Unix cmd.exe non li esegue e la finestra si chiude subito.
+# -text disattiva ogni conversione, cosi' i byte salvati qui sono anche
+# quelli che finiscono nello ZIP scaricato da GitHub.
+*.bat -text
+*.cmd -text
+*.sh  text eol=lf

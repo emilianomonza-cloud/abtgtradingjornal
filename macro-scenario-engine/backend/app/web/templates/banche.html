@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Banche centrali — Macro Scenario Engine{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Stance delle banche centrali</h1>
+  <p class="muted small">
+    Tono aggregato dei comunicati analizzati (−100 accomodante / +100 restrittivo).
+    Classificatore: {{ 'LLM configurato' if llm_attivo else 'rule-based (dizionario IT/EN)' }}.
+    Del feed RSS viene analizzato titolo + sommario, non il documento integrale.
+  </p>
+</section>
+
+<div class="grid grid-wide">
+  {% for b in banche %}
+  <section class="card">
+    <header>
+      <span class="pair">{{ b.banca }}</span>
+      <span class="tag">{{ b.valuta }}</span>
+    </header>
+
+    <table>
+      <tr>
+        <td class="muted">Tasso di policy</td>
+        <td class="num">
+          {% if b.tasso %}
+          <strong>{{ '%.2f'|format(b.tasso.rate) }}%</strong>
+          {% if b.tasso.previous_rate is not none %}
+          <span class="small muted">(prec. {{ '%.2f'|format(b.tasso.previous_rate) }}%)</span>
+          {% endif %}
+          {% else %}<span class="muted">non impostato</span>{% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td class="muted">Aggiornato</td>
+        <td class="num small muted">
+          {{ b.tasso.updated_at.strftime('%d/%m/%Y') if b.tasso and b.tasso.updated_at else '—' }}
+          · fonte {{ b.tasso.source if b.tasso else '—' }}
+        </td>
+      </tr>
+      <tr>
+        <td class="muted">Stance score</td>
+        <td class="num {{ 'pos' if (b.stance.valore or 0) > 0 else ('neg' if (b.stance.valore or 0) < 0 else 'flat') }}">
+          {{ '%+.0f'|format(b.stance.valore) if b.stance and b.stance.valore is not none else '—' }}
+        </td>
+      </tr>
+      <tr>
+        <td class="muted">Prossima riunione</td>
+        <td class="num small muted">
+          {{ b.tasso.next_meeting.strftime('%d/%m/%Y') if b.tasso and b.tasso.next_meeting else 'non nota' }}
+        </td>
+      </tr>
+    </table>
+
+    {% if b.stance and b.stance.motivazione %}
+    <p class="small muted">{{ b.stance.motivazione }}</p>
+    {% endif %}
+
+    <h3>Ultimi documenti analizzati</h3>
+    {% if b.documenti %}
+    <ul class="tight small">
+      {% for d in b.documenti %}
+      <li>
+        <span class="tag {{ 'ok' if d.tone_label == 'HAWKISH' else ('bad' if d.tone_label == 'DOVISH' else 'neutral') }}">
+          {{ d.tone_label }} {{ '%+.0f'|format(d.tone_score) }}
+        </span>
+        <span class="muted">{{ d.published_at.strftime('%d/%m') if d.published_at else '' }}</span>
+        <a href="{{ d.url }}" target="_blank" rel="noopener">{{ d.title[:90] }}</a>
+        <div class="muted">{{ d.summary_it }}</div>
+        {% if d.themes %}
+        <div>{% for t in d.themes %}<span class="tag">{{ t }}</span>{% endfor %}</div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted small">Nessun documento raccolto. Verificare lo stato del collector in <a href="/fonti">Fonti</a>.</p>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

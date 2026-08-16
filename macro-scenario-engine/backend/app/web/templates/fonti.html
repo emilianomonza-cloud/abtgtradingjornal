@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Fonti — Macro Scenario Engine{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Stato dei collector</h1>
+  <p class="muted small">
+    Se una fonte e' DEGRADED o DOWN il sistema prosegue con le fonti disponibili
+    e <strong>abbassa la confidenza degli scenari</strong>: nessun dato viene inventato.
+  </p>
+  <p>
+    <button type="button" data-azione="collect">Scarica i dati adesso</button>
+    <span class="muted small">
+      Eventi in archivio: <strong>{{ eventi_totali }}</strong>.
+      I collector girano comunque da soli: calendario ogni ora, banche centrali
+      ogni 3 ore, e subito all'avvio del server.
+    </span>
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Fonte</th><th>Stato</th><th>Ultima esecuzione</th><th>Ultimo successo</th>
+        <th class="num">Latenza</th><th class="num">Elementi</th><th class="num">Fallimenti</th><th>Messaggio</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in fonti %}
+      <tr>
+        <td>{{ f.label or f.name }}<div class="small muted">{{ f.name }}</div></td>
+        <td>
+          <span class="tag {{ 'ok' if f.status == 'OK' else ('warn' if f.status == 'DEGRADED' else 'bad') }}">
+            {{ f.status }}
+          </span>
+        </td>
+        <td class="small muted">{{ f.last_run.strftime('%d/%m %H:%M:%S') if f.last_run else '—' }}</td>
+        <td class="small muted">{{ f.last_success.strftime('%d/%m %H:%M:%S') if f.last_success else '—' }}</td>
+        <td class="num">{{ '%.0f ms'|format(f.latency_ms) if f.latency_ms else '—' }}</td>
+        <td class="num">{{ f.items }}</td>
+        <td class="num {{ 'neg' if f.consecutive_failures else '' }}">{{ f.consecutive_failures }}</td>
+        <td class="small muted">{{ f.message }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="muted">Nessun collector ancora eseguito. Lancia <code>POST /api/v1/admin/collect</code>.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h1>Job schedulati</h1>
+  <table>
+    <thead><tr><th>Job</th><th>Prossima esecuzione (UTC)</th></tr></thead>
+    <tbody>
+      {% for j in job %}
+      <tr>
+        <td>{{ j.id }}</td>
+        <td class="muted">{{ j.prossima_esecuzione[:19].replace('T', ' ') if j.prossima_esecuzione else 'non pianificata' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2" class="muted">Scheduler disattivato (MSE_SCHEDULER_ENABLED=false).</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">
+    Eta dello snapshot in cache:
+    {{ '%.0f secondi'|format(eta_snapshot) if eta_snapshot is not none else 'mai calcolato' }}.
+  </p>
+</section>
+
+<section class="panel">
+  <h1>Limiti dichiarati del sistema</h1>
+  <ul class="tight">
+    {% for l in limiti %}<li>{{ l }}</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>document.body.dataset.refresh = "60";</script>
+{% endblock %}

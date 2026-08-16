@@ -1,0 +1,26 @@
+services:
+  macro-scenario-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: macro-scenario-engine
+    ports:
+      - "8000:8000"
+    volumes:
+      # Database, cache delle fonti ed export MT5 sopravvivono al container.
+      - ./data:/app/data
+      # Configurazione modificabile a caldo (POST /api/v1/admin/reload-config).
+      - ./backend/app/config:/app/backend/app/config
+    env_file:
+      # Copiare backend/.env.example in backend/.env prima del primo avvio.
+      - path: ./backend/.env
+        required: false
+    environment:
+      MSE_HOST: 0.0.0.0
+      MSE_PORT: 8000
+      MSE_DB_PATH: /app/data/macro_scenario.db
+      MSE_CACHE_DIR: /app/data/cache
+      # Per scrivere macro_snapshot.json direttamente in MQL5\Files, montare
+      # quella cartella come volume e puntare qui il percorso interno.
+      MSE_MT5_FILES_DIR: /app/data/mt5
+    restart: unless-stopped

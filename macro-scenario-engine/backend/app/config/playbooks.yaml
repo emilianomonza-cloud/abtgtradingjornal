@@ -1,0 +1,367 @@
+# ═══════════════════════════════════════════════════════════════
+# SEZIONE 8 — PLAYBOOK EVENTI
+# Chiave = categoria indicatore (vedi indicators.yaml) oppure CATEGORIA:VALUTA
+# per specializzare (es. RATE_DECISION:USD = FOMC).
+# I riferimenti alle catene sono quelli della SEZIONE 3.1 registrati in engine/causal_chains.py
+# ═══════════════════════════════════════════════════════════════
+
+playbooks:
+
+  NFP:
+    nome: "Non-Farm Payrolls"
+    valuta_primaria: USD
+    valute_secondarie: [EUR, JPY, XAU]
+    catena_attesa: PIL_CRESCITA
+    catene_secondarie: [TASSI_CAPITALI_CAMBIO]
+    descrizione: >
+      Occupazione ↑ → redditi ↑ → consumi ↑ → domanda aggregata ↑ → pressione sui prezzi ↑
+      → attese di politica monetaria piu' restrittiva → differenziale tassi ↑ → afflussi di
+      capitale → USD si apprezza.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "USD forte. Il canale capitali domina: attese di tassi piu' alti a lungo."
+        CREDIBILITY_LOSS: "Reazione ambigua: crescita forte ma dubbi sulla reazione della banca centrale."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "USD debole. Attese di easing anticipato, differenziale tassi in compressione."
+        CREDIBILITY_LOSS: "USD debole con volatilita' amplificata sugli asset rischiosi."
+    eccezioni:
+      - "NFP forte ma revisioni dei mesi precedenti negative → impatto ambiguo, confidenza −1."
+      - "NFP forte con salari (average hourly earnings) sotto attese → canale inflazione non confermato, impulso ridotto."
+      - "NFP debole ma tasso di disoccupazione in calo → segnale contrastante, confidenza −1."
+    volatilita_attesa: MOLTO_ALTA
+    no_trade_minuti: {prima: 30, dopo: 20}
+    second_order:
+      - "USD ↑ → XAUUSD tipicamente ↓ (oro quotato in dollari, costo opportunita' ↑)"
+      - "USD ↑ con dati forti → indici azionari inizialmente misti: crescita positiva ma tassi attesi ↑"
+      - "USDJPY particolarmente sensibile: e' la coppia piu' esposta al differenziale tassi"
+
+  CPI:
+    nome: "Indice dei prezzi al consumo"
+    valuta_primaria: null   # dipende dalla valuta dell'evento
+    valute_secondarie: []
+    catena_attesa: INFLAZIONE_COMPETITIVITA
+    catene_secondarie: [TASSI_CAPITALI_CAMBIO, MONETARIA_RESTRITTIVA]
+    descrizione: >
+      In regime HAWKISH_DOMINANT: CPI ↑ → attese di rialzo tassi → canale capitali dominante
+      → valuta ↑. In regime CREDIBILITY_LOSS: CPI ↑ con banca centrale bloccata → cambio reale
+      si apprezza → competitivita' ↓ → esportazioni ↓ → valuta ↓.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Valuta forte: il mercato prezza tassi piu' alti/piu' a lungo."
+        CREDIBILITY_LOSS: "Valuta debole: erosione del potere d'acquisto senza risposta di politica monetaria."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Valuta debole: spazio per tagli, differenziale tassi in compressione."
+        CREDIBILITY_LOSS: "Valuta stabile o in recupero: riduzione del premio al rischio inflazione."
+    eccezioni:
+      - "Headline sopra attese ma core sotto attese → impulso dimezzato, la banca centrale guarda il core."
+      - "Sorpresa guidata da energia/alimentari (componenti volatili) → impulso ridotto, confidenza −1."
+      - "CPI in linea ma con revisione al rialzo del mese precedente → effetto attenuato."
+    volatilita_attesa: MOLTO_ALTA
+    no_trade_minuti: {prima: 30, dopo: 20}
+    second_order:
+      - "CPI USA ↑ → tassi reali ↑ → XAUUSD sotto pressione (salvo fuga verso beni rifugio)"
+
+  CORE_CPI:
+    nome: "Inflazione core"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: INFLAZIONE_COMPETITIVITA
+    catene_secondarie: [TASSI_CAPITALI_CAMBIO]
+    descrizione: >
+      Il core esclude energia e alimentari: e' l'indicatore che le banche centrali usano
+      per valutare la persistenza. Peso decisionale superiore all'headline.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Valuta forte, segnale di persistenza: impulso superiore all'headline."
+        CREDIBILITY_LOSS: "Valuta debole, l'inflazione persiste senza reazione di policy."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Valuta debole: la disinflazione apre alla normalizzazione dei tassi."
+        CREDIBILITY_LOSS: "Effetto contenuto."
+    eccezioni:
+      - "Core trainato da affitti/servizi con componenti ritardate → persistenza sovrastimata."
+    volatilita_attesa: ALTA
+    no_trade_minuti: {prima: 30, dopo: 20}
+    second_order: []
+
+  PPI:
+    nome: "Prezzi alla produzione"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: INFLAZIONE_COMPETITIVITA
+    catene_secondarie: []
+    descrizione: >
+      I prezzi alla produzione anticipano parzialmente i prezzi al consumo (pass-through
+      con ritardo). Impulso inferiore al CPI.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Valuta moderatamente forte: pressione a monte sui prezzi."
+        CREDIBILITY_LOSS: "Impatto limitato."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Valuta moderatamente debole."
+        CREDIBILITY_LOSS: "Impatto limitato."
+    eccezioni:
+      - "Pass-through non automatico: margini d'impresa possono assorbire l'aumento."
+    volatilita_attesa: MEDIA
+    no_trade_minuti: {prima: 10, dopo: 10}
+    second_order: []
+
+  RATE_DECISION:
+    nome: "Decisione sui tassi"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: TASSI_CAPITALI_CAMBIO
+    catene_secondarie: [MONETARIA_RESTRITTIVA, MONETARIA_ESPANSIVA]
+    descrizione: >
+      Il differenziale dei tassi e' il canale piu' diretto sul cambio: i interno ↑ rispetto
+      a i estero → attivita' finanziarie nazionali piu' attraenti → afflussi di capitale
+      → domanda della valuta ↑ → apprezzamento.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Rialzo superiore alle attese: apprezzamento immediato e persistente."
+        CREDIBILITY_LOSS: "Rialzo letto come rincorsa: reazione iniziale positiva, poi incerta."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Taglio/mantenimento inatteso: deprezzamento."
+        CREDIBILITY_LOSS: "Deprezzamento amplificato."
+    eccezioni:
+      - "Decisione in linea ma guidance opposta al mercato → la reazione segue la guidance, non il tasso."
+      - "Voto del comitato spaccato (dissensi) → riduce la persistenza del movimento."
+      - "Rialzo 'dovish' (alza ma segnala fine ciclo) → valuta puo' indebolirsi nonostante il rialzo."
+    volatilita_attesa: MOLTO_ALTA
+    no_trade_minuti: {prima: 45, dopo: 45}
+    second_order:
+      - "Impatto su tutte le coppie che contengono la valuta, non solo la principale"
+
+  MONETARY_STATEMENT:
+    nome: "Comunicati, minutes e discorsi"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: TASSI_CAPITALI_CAMBIO
+    catene_secondarie: []
+    descrizione: >
+      La componente informativa e' il TONO, non un numero. Alimenta il Central Bank
+      Stance Score tramite il layer semantico (SEZIONE 3.4).
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Tono piu' restrittivo delle attese: valuta forte."
+        CREDIBILITY_LOSS: "Effetto ridotto: il mercato dubita dell'attuazione."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Tono piu' accomodante delle attese: valuta debole."
+        CREDIBILITY_LOSS: "Valuta debole."
+    eccezioni:
+      - "Minutes pubblicati con 3+ settimane di ritardo → informazione gia' in parte prezzata."
+      - "Discorso su temi non di policy (regolamentazione, pagamenti) → impatto nullo."
+    volatilita_attesa: MEDIA
+    no_trade_minuti: {prima: 15, dopo: 15}
+    second_order: []
+
+  GDP:
+    nome: "Prodotto Interno Lordo"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: PIL_CRESCITA
+    catene_secondarie: [TASSI_CAPITALI_CAMBIO, COMMERCIO_ESTERO]
+    descrizione: >
+      PIL ↑ → produzione ↑ → occupazione ↑ → redditi ↑ → consumi ↑. Effetto sul cambio
+      INDIRETTO: dipende da come la banca centrale reagisce e dalla composizione della crescita.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Valuta forte: crescita + banca centrale restrittiva attesa."
+        CREDIBILITY_LOSS: "Effetto ambiguo."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Valuta debole: attese di easing."
+        CREDIBILITY_LOSS: "Valuta debole."
+    eccezioni:
+      - "Crescita trainata da domanda interna con importazioni ↑ → possibile peggioramento della bilancia commerciale: effetto netto sul cambio ridotto."
+      - "Dato finale (final GDP) dopo prelim → impatto marginale, gia' prezzato."
+    volatilita_attesa: ALTA
+    no_trade_minuti: {prima: 20, dopo: 15}
+    second_order: []
+
+  PMI_MANUF:
+    nome: "PMI manifatturiero"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: PIL_CRESCITA
+    catene_secondarie: []
+    descrizione: >
+      Indicatore anticipatore. La soglia 50 separa espansione e contrazione: la distanza
+      dal livello neutro conta quanto la sorpresa rispetto al forecast.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Valuta moderatamente forte."
+        CREDIBILITY_LOSS: "Impatto contenuto."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Valuta moderatamente debole."
+        CREDIBILITY_LOSS: "Valuta debole."
+    eccezioni:
+      - "PMI sopra attese ma sotto 50 → resta contrazione: impulso dimezzato."
+      - "Revisione del dato flash → impatto marginale."
+    volatilita_attesa: MEDIA
+    no_trade_minuti: {prima: 10, dopo: 10}
+    second_order: []
+
+  PMI_SERV:
+    nome: "PMI servizi / composito"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: PIL_CRESCITA
+    catene_secondarie: []
+    descrizione: >
+      Nelle economie avanzate i servizi pesano molto piu' del manifatturiero sul PIL:
+      impulso superiore al PMI manifatturiero.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Valuta forte: componente dominante del PIL in accelerazione."
+        CREDIBILITY_LOSS: "Impatto contenuto."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Valuta debole."
+        CREDIBILITY_LOSS: "Valuta debole."
+    eccezioni:
+      - "Componente prezzi (prices paid) divergente dal dato headline → segnale misto su inflazione."
+    volatilita_attesa: MEDIA
+    no_trade_minuti: {prima: 10, dopo: 10}
+    second_order: []
+
+  RETAIL_SALES:
+    nome: "Vendite al dettaglio"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: PIL_CRESCITA
+    catene_secondarie: [COMMERCIO_ESTERO]
+    descrizione: >
+      Consumi ↑ → domanda aggregata ↑ → PIL ↑. Ma consumi trainati da beni importati
+      → importazioni ↑ → offerta di valuta nazionale ↑: effetto netto attenuato.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Valuta forte: domanda interna solida sostiene attese di tassi alti."
+        CREDIBILITY_LOSS: "Impatto contenuto."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Valuta debole: consumatore in frenata."
+        CREDIBILITY_LOSS: "Valuta debole."
+    eccezioni:
+      - "Dato nominale non depurato dai prezzi → in fase inflattiva puo' sovrastimare i volumi reali."
+      - "Core retail sales (esclusa auto) divergente → il core ha peso maggiore."
+    volatilita_attesa: MEDIA
+    no_trade_minuti: {prima: 15, dopo: 10}
+    second_order: []
+
+  UNEMPLOYMENT:
+    nome: "Tasso di disoccupazione"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: PIL_CRESCITA
+    catene_secondarie: [TASSI_CAPITALI_CAMBIO]
+    descrizione: >
+      Indicatore INVERTITO: disoccupazione ↑ → redditi ↓ → consumi ↓ → domanda aggregata ↓
+      → attese di politica espansiva → valuta ↓.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Disoccupazione sopra attese = valuta DEBOLE (indicatore invertito)."
+        CREDIBILITY_LOSS: "Valuta debole."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Disoccupazione sotto attese = valuta FORTE (indicatore invertito)."
+        CREDIBILITY_LOSS: "Effetto contenuto."
+    eccezioni:
+      - "Calo della disoccupazione dovuto a riduzione del tasso di partecipazione → segnale di debolezza mascherata, confidenza −1."
+    volatilita_attesa: ALTA
+    no_trade_minuti: {prima: 20, dopo: 15}
+    second_order: []
+
+  TRADE_BALANCE:
+    nome: "Bilancia commerciale"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: COMMERCIO_ESTERO
+    catene_secondarie: [BILANCIA_PAGAMENTI]
+    descrizione: >
+      Esportazioni ↑ → gli acquirenti esteri devono comprare la valuta nazionale
+      → domanda valuta ↑ → apprezzamento. Importazioni ↑ → offerta valuta ↑ → deprezzamento.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Surplus superiore alle attese: pressione all'apprezzamento, effetto lento."
+        CREDIBILITY_LOSS: "Idem, canale strutturale indipendente dal regime."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Deficit superiore alle attese: pressione al deprezzamento."
+        CREDIBILITY_LOSS: "Idem."
+    eccezioni:
+      - "Effetto molto lento sui cambi: rilevante sull'orizzonte 1-4 settimane, quasi nullo intraday."
+      - "Surplus per crollo delle importazioni (recessione) → segnale negativo, non positivo."
+    volatilita_attesa: BASSA
+    no_trade_minuti: {prima: 5, dopo: 5}
+    second_order: []
+
+  CURRENT_ACCOUNT:
+    nome: "Partite correnti"
+    valuta_primaria: null
+    valute_secondarie: []
+    catena_attesa: BILANCIA_PAGAMENTI
+    catene_secondarie: []
+    descrizione: >
+      BP > 0 (avanzo) → domanda valuta ↑ → apprezzamento.
+      BP < 0 (disavanzo) → offerta valuta ↑ → deprezzamento.
+    reazione:
+      BIG_BEAT:
+        HAWKISH_DOMINANT: "Avanzo sopra attese: supporto strutturale alla valuta."
+        CREDIBILITY_LOSS: "Idem."
+      BIG_MISS:
+        HAWKISH_DOMINANT: "Disavanzo: pressione strutturale al deprezzamento."
+        CREDIBILITY_LOSS: "Idem."
+    eccezioni:
+      - "In regime di cambi fissi lo squilibrio si scarica su riserve valutarie e base monetaria, non sul cambio."
+    volatilita_attesa: BASSA
+    no_trade_minuti: {prima: 5, dopo: 5}
+    second_order: []
+
+# Playbook specializzati per banca centrale (chiave CATEGORIA:VALUTA).
+# Ereditano dal playbook di categoria e ne sovrascrivono i campi presenti.
+specializzazioni:
+
+  "RATE_DECISION:USD":
+    nome: "FOMC — Federal Open Market Committee"
+    valuta_primaria: USD
+    valute_secondarie: [EUR, JPY, GBP, XAU]
+    eccezioni:
+      - "Il dot plot (proiezioni trimestrali) puo' contare piu' della decisione stessa."
+      - "Conferenza stampa 30 minuti dopo il comunicato: due picchi di volatilita' distinti."
+      - "Rialzo 'dovish' possibile: alza ma segnala fine ciclo → USD puo' indebolirsi."
+    volatilita_attesa: ESTREMA
+    no_trade_minuti: {prima: 60, dopo: 60}
+    second_order:
+      - "USD ↑ → XAUUSD ↓ e pressione sui mercati emergenti"
+      - "Guida tutte le altre banche centrali: effetto di trascinamento su AUD, CAD, NZD"
+
+  "RATE_DECISION:EUR":
+    nome: "BCE — Banca Centrale Europea"
+    valuta_primaria: EUR
+    valute_secondarie: [USD, GBP, CHF]
+    eccezioni:
+      - "Le proiezioni macro dello staff (marzo/giugno/settembre/dicembre) muovono piu' del tasso."
+      - "Spread periferici in allargamento durante la conferenza → EUR debole nonostante tono hawkish."
+    volatilita_attesa: ESTREMA
+    no_trade_minuti: {prima: 45, dopo: 60}
+    second_order:
+      - "EURUSD e' la coppia di riferimento: il movimento si propaga a EURGBP e EURCHF"
+
+  "RATE_DECISION:GBP":
+    nome: "BoE — Bank of England"
+    valuta_primaria: GBP
+    valute_secondarie: [EUR, USD]
+    eccezioni:
+      - "La ripartizione dei voti MPC (es. 7-2) e' spesso piu' informativa della decisione."
+    volatilita_attesa: MOLTO_ALTA
+    no_trade_minuti: {prima: 45, dopo: 45}
+    second_order:
+      - "EURGBP e' la coppia piu' pulita per isolare il fattore GBP"
+
+  "RATE_DECISION:JPY":
+    nome: "BoJ — Bank of Japan"
+    valuta_primaria: JPY
+    valute_secondarie: [USD]
+    eccezioni:
+      - "Orario del comunicato non fisso: la finestra di volatilita' e' piu' ampia del previsto."
+      - "Rischio di intervento verbale o effettivo sul cambio: puo' invertire il movimento in pochi minuti."
+      - "Modifiche al controllo della curva dei rendimenti hanno impatto sproporzionato rispetto al tasso."
+    volatilita_attesa: ESTREMA
+    no_trade_minuti: {prima: 60, dopo: 90}
+    second_order:
+      - "JPY forte → USDJPY ↓ e tipicamente pressione sugli asset rischiosi (unwind carry trade)"

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Macro Scenario Engine{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">MSE</span>
+    <span class="brand-name">Macro Scenario Engine</span>
+  </div>
+  <nav>
+    <a href="/" class="{{ 'on' if active == 'overview' }}">Overview</a>
+    <a href="/calendario" class="{{ 'on' if active == 'calendario' }}">Calendario</a>
+    <a href="/scenari" class="{{ 'on' if active == 'scenari' }}">Scenari</a>
+    <a href="/banche-centrali" class="{{ 'on' if active == 'banche' }}">Banche centrali</a>
+    <a href="/affidabilita" class="{{ 'on' if active == 'affidabilita' }}">Affidabilita</a>
+    <a href="/storico" class="{{ 'on' if active == 'storico' }}">Storico</a>
+    <a href="/fonti" class="{{ 'on' if active == 'fonti' }}">Fonti</a>
+    <a href="/docs" target="_blank" rel="noopener">API</a>
+  </nav>
+  <div class="clock">
+    <span class="muted">UTC</span>
+    <span id="clock" data-utc="{{ adesso.isoformat() }}">{{ adesso.strftime('%H:%M:%S') }}</span>
+    <span class="muted">| {{ config.operator.get('fuso_orario', 'Europe/Rome') }}</span>
+    <span class="tag {{ 'ok' if llm_attivo else 'neutral' }}">
+      {{ 'LLM' if llm_attivo else 'RULE-BASED' }}
+    </span>
+  </div>
+</header>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="disclaimer">
+  <strong>DISCLAIMER —</strong> {{ disclaimer }}
+</footer>
+
+<script src="/static/js/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

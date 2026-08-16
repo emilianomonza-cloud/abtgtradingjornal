@@ -1,0 +1,67 @@
+# ═══════════════════════════════════════════════════════════════
+# SEZIONE 0 — CONFIGURAZIONE OPERATORE
+# Modificabile senza toccare il codice. Ricaricata da POST /api/v1/admin/reload-config
+# ═══════════════════════════════════════════════════════════════
+
+lingua: it
+fuso_orario: Europe/Rome
+timeframe_operativi: [M15, H1, H4, D1]
+
+# Orizzonte degli scenari: intraday | h24_72 | w1_4
+orizzonte_default: h24_72
+orizzonti:
+  intraday:
+    etichetta: "Intraday (0-8h)"
+    ore: 8
+  h24_72:
+    etichetta: "24-72 ore"
+    ore: 72
+  w1_4:
+    etichetta: "1-4 settimane"
+    ore: 672
+
+# Stile operativo: influenza il playbook e i suggerimenti non vincolanti.
+# no_trade_news | news_fade | trend_continuation
+stile: no_trade_news
+
+rischio_per_trade_pct: 0.5
+
+coppie:
+  - EURUSD
+  - GBPUSD
+  - USDJPY
+  - AUDUSD
+  - USDCAD
+  - EURGBP
+  - XAUUSD
+
+valute:
+  - EUR
+  - USD
+  - GBP
+  - JPY
+  - AUD
+  - CAD
+  - CHF
+  - NZD
+
+# Pseudo-valute (metalli/indici): non hanno banca centrale ne' dati macro propri.
+# Vengono valutate come funzione inversa di una valuta di riferimento (proxy tassi reali)
+# piu' una componente di risk sentiment. Il limite e' dichiarato in dashboard.
+valute_sintetiche:
+  XAU:
+    nome: "Oro"
+    inverso_di: USD
+    fattore: 0.60
+    nota: "Score derivato: proxy tassi reali USA invertito. Non include flussi fisici, banche centrali acquirenti, premio geopolitico."
+
+# Banche centrali per valuta
+banche_centrali:
+  USD: FED
+  EUR: BCE
+  GBP: BOE
+  JPY: BOJ
+  AUD: RBA
+  CAD: BOC
+  CHF: SNB
+  NZD: RBNZ

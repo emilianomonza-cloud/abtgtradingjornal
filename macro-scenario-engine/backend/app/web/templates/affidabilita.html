@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Affidabilita — Macro Scenario Engine{% endblock %}
+
+{% block content %}
+{% if not globale.campione_sufficiente %}
+<div class="notice">
+  <strong>Campione insufficiente.</strong> {{ globale.avviso }}
+  Servono almeno {{ min_campione }} scenari valutati (cioe' scenari il cui orizzonte
+  e' concluso e per cui sono disponibili i prezzi importati via CSV).
+</div>
+{% endif %}
+
+<section class="panel">
+  <h1>Metriche globali</h1>
+  <div class="kpi">
+    <div class="item">
+      <div class="value">{{ globale.campione }}</div>
+      <div class="label">scenari valutati</div>
+    </div>
+    <div class="item">
+      <div class="value {{ 'pos' if (globale.hit_rate or 0) >= 50 else 'neg' }}">
+        {{ '%.1f%%'|format(globale.hit_rate) if globale.hit_rate is not none else '—' }}
+      </div>
+      <div class="label">hit-rate scenario base</div>
+    </div>
+    <div class="item">
+      <div class="value {{ 'pos' if (globale.brier or 1) < 0.25 else 'neg' }}">
+        {{ globale.brier if globale.brier is not none else '—' }}
+      </div>
+      <div class="label">Brier score (meglio se &lt; 0.25)</div>
+    </div>
+  </div>
+  <p class="small muted">{{ globale.nota_metodo }}</p>
+  {% if globale.banda_neutra %}
+  <p class="small muted">
+    Banda neutra: {{ globale.banda_neutra.metodo }}.
+    {% if globale.banda_neutra.media_pct is not none %}
+    Su questo campione: media ±{{ globale.banda_neutra.media_pct }}%,
+    da ±{{ globale.banda_neutra.min_pct }}% a ±{{ globale.banda_neutra.max_pct }}%.
+    {% endif %}
+    {% if globale.banda_neutra.esiti_valutati_con_banda_fissa_storica %}
+    Attenzione: {{ globale.banda_neutra.esiti_valutati_con_banda_fissa_storica }}
+    esiti valutati con la vecchia banda fissa — per confrontarli, rilancia la rigiocata.
+    {% endif %}
+  </p>
+  {% endif %}
+</section>
+
+{% if globale.direzioni %}
+<section class="panel">
+  <h1>Direzioni: previste contro realizzate</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Direzione</th><th class="num">Prevista (scenario base)</th>
+        <th class="num">Realizzata dal mercato</th><th class="num">Hit-rate quando prevista</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for dir in ['RIALZO', 'RIBASSO', 'LATERALE'] %}
+      <tr>
+        <td><strong>{{ dir }}</strong></td>
+        <td class="num">{{ globale.direzioni.previste.get(dir, 0) }}</td>
+        <td class="num">{{ globale.direzioni.realizzate.get(dir, 0) }}</td>
+        <td class="num">
+          {% set h = globale.direzioni.hit_per_direzione_prevista.get(dir) %}
+          {{ '%.1f%%'|format(h.hit_rate) if h else '—' }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">
+    Se una direzione viene prevista molto piu' spesso di quanto si realizzi
+    (o viceversa), il problema e' la mappa bias→direzione o la banda neutra,
+    non l'informazione macro: e' esattamente il difetto misurato e corretto
+    nella ricalibrazione.
+  </p>
+</section>
+{% endif %}
+
+<section class="panel">
+  <h1>Curva di calibrazione</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Bucket di probabilita</th><th class="num">Campione</th>
+        <th class="num">Probabilita media dichiarata</th>
+        <th class="num">Frequenza reale</th><th class="num">Scarto</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in globale.calibrazione %}
+      <tr>
+        <td>{{ b.bucket }}</td>
+        <td class="num">{{ b.campione }}</td>
+        <td class="num">{{ '%.1f%%'|format(b.probabilita_media) if b.probabilita_media is not none else '—' }}</td>
+        <td class="num">{{ '%.1f%%'|format(b.frequenza_reale) if b.frequenza_reale is not none else '—' }}</td>
+        <td class="num {{ 'pos' if (b.scarto or 0) >= 0 else 'neg' }}">
+          {{ '%+.1f pp'|format(b.scarto) if b.scarto is not none else '—' }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">
+    Uno scarto positivo significa che il modello e' stato prudente (esito migliore
+    della probabilita dichiarata); uno scarto negativo che ha sovrastimato.
+  </p>
+</section>
+
+{% if globale.per_confidenza %}
+<section class="panel">
+  <h1>Per livello di confidenza</h1>
+  <table>
+    <thead><tr><th>Confidenza</th><th class="num">Campione</th><th class="num">Hit-rate</th><th class="num">Brier</th></tr></thead>
+    <tbody>
+      {% for level, m in globale.per_confidenza.items() %}
+      <tr>
+        <td><span class="tag {{ 'ok' if level == 'ALTA' else ('warn' if level == 'MEDIA' else 'bad') }}">{{ level }}</span></td>
+        <td class="num">{{ m.campione }}</td>
+        <td class="num">{{ '%.1f%%'|format(m.hit_rate) }}</td>
+        <td class="num">{{ m.brier }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="panel">
+  <h1>Per coppia</h1>
+  <table>
+    <thead><tr><th>Coppia</th><th class="num">Campione</th><th class="num">Hit-rate</th><th class="num">Brier</th><th>Nota</th></tr></thead>
+    <tbody>
+      {% for pair, m in per_coppia.items() %}
+      <tr>
+        <td><strong>{{ pair }}</strong></td>
+        <td class="num">{{ m.campione }}</td>
+        <td class="num">{{ '%.1f%%'|format(m.hit_rate) if m.hit_rate is not none else '—' }}</td>
+        <td class="num">{{ m.brier if m.brier is not none else '—' }}</td>
+        <td class="small muted">{{ m.avviso or 'campione sufficiente' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">
+    Per popolare queste metriche importa i prezzi storici delle coppie
+    (<code>POST /api/v1/admin/prices/import</code>, CSV esportabile da MT5) e lancia
+    <code>POST /api/v1/admin/evaluate</code>.
+  </p>
+</section>
+{% endblock %}

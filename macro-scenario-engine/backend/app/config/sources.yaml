@@ -1,0 +1,158 @@
+# ═══════════════════════════════════════════════════════════════
+# SEZIONE 4 — FONTI DATI
+# Ogni fonte ha: url, tipo di parser, priorita' (1 = primaria) e abilitazione.
+# Il rate limiting globale e' in .env (MSE_MIN_REQUEST_INTERVAL_SECONDS).
+# Se una fonte fallisce viene marcata DEGRADED/DOWN e il sistema prosegue con le altre
+# ABBASSANDO la confidenza degli scenari (nessun dato inventato).
+# ═══════════════════════════════════════════════════════════════
+
+calendario:
+
+  - nome: forexfactory_json
+    etichetta: "Forex Factory — feed JSON settimanale"
+    # Feed JSON pubblico usato dal widget ufficiale del calendario Forex Factory.
+    # E' l'accesso meno invasivo possibile: un solo file statico per settimana,
+    # nessuna richiesta alle pagine del sito.
+    url: "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    url_extra:
+      - "https://nfs.faireconomy.media/ff_calendar_nextweek.json"
+    parser: forexfactory_json
+    priorita: 1
+    abilitata: true
+    note: "Fonte primaria. Nessuna API ufficiale documentata: se il feed cambia formato o blocca, si passa ai fallback."
+
+  - nome: forexfactory_html
+    etichetta: "Forex Factory — pagina calendario (fallback)"
+    url: "https://www.forexfactory.com/calendar"
+    parser: forexfactory_html
+    priorita: 2
+    abilitata: false   # disattivata di default: usare solo se il feed JSON e' indisponibile
+    note: "Scraping HTML. Attivare solo in caso di necessita', rispettando ToS e rate limit."
+
+  - nome: csv_manuale
+    etichetta: "Import manuale CSV / API"
+    url: null
+    parser: csv
+    priorita: 3
+    abilitata: true
+    note: "Sempre disponibile: POST /api/v1/admin/calendar/import (CSV o JSON). Fallback definitivo."
+
+banche_centrali:
+
+  - nome: fed_press
+    banca: FED
+    valuta: USD
+    etichetta: "Federal Reserve — comunicati di politica monetaria"
+    url: "https://www.federalreserve.gov/feeds/press_monetary.xml"
+    parser: rss
+    tipo_documento: PRESS_RELEASE
+    abilitata: true
+
+  - nome: fed_speeches
+    banca: FED
+    valuta: USD
+    etichetta: "Federal Reserve — discorsi"
+    url: "https://www.federalreserve.gov/feeds/speeches.xml"
+    parser: rss
+    tipo_documento: SPEECH
+    abilitata: true
+
+  - nome: ecb_press
+    banca: BCE
+    valuta: EUR
+    etichetta: "BCE — comunicati stampa"
+    url: "https://www.ecb.europa.eu/rss/press.html"
+    parser: rss
+    tipo_documento: PRESS_RELEASE
+    abilitata: true
+
+  - nome: ecb_speeches
+    banca: BCE
+    valuta: EUR
+    etichetta: "BCE — discorsi"
+    url: "https://www.ecb.europa.eu/rss/speeches.html"
+    parser: rss
+    tipo_documento: SPEECH
+    abilitata: true
+
+  - nome: boe_news
+    banca: BOE
+    valuta: GBP
+    etichetta: "Bank of England — news e pubblicazioni"
+    url: "https://www.bankofengland.co.uk/boeapps/rss/feeds.aspx?feed=News"
+    parser: rss
+    tipo_documento: PRESS_RELEASE
+    abilitata: true
+
+  - nome: boj_news
+    banca: BOJ
+    valuta: JPY
+    etichetta: "Bank of Japan — what's new"
+    url: "https://www.boj.or.jp/en/rss/whatsnew.xml"
+    parser: rss
+    tipo_documento: PRESS_RELEASE
+    abilitata: true
+
+  - nome: rba_releases
+    banca: RBA
+    valuta: AUD
+    etichetta: "RBA — media releases"
+    url: "https://www.rba.gov.au/rss/rss-cb-media-releases.xml"
+    parser: rss
+    tipo_documento: PRESS_RELEASE
+    abilitata: true
+
+  - nome: rba_speeches
+    banca: RBA
+    valuta: AUD
+    etichetta: "RBA — discorsi"
+    url: "https://www.rba.gov.au/rss/rss-cb-speeches.xml"
+    parser: rss
+    tipo_documento: SPEECH
+    abilitata: true
+
+  - nome: boc_releases
+    banca: BOC
+    valuta: CAD
+    etichetta: "Bank of Canada — press releases"
+    url: "https://www.bankofcanada.ca/content_type/press-releases/feed/"
+    parser: rss
+    tipo_documento: PRESS_RELEASE
+    abilitata: true
+
+  - nome: snb_releases
+    banca: SNB
+    valuta: CHF
+    etichetta: "SNB — comunicati stampa"
+    url: "https://www.snb.ch/public/en/rss/press-releases"
+    parser: rss
+    tipo_documento: PRESS_RELEASE
+    abilitata: true
+
+  - nome: rbnz_news
+    banca: RBNZ
+    valuta: NZD
+    etichetta: "RBNZ — news"
+    url: "https://www.rbnz.govt.nz/rss/news"
+    parser: rss
+    tipo_documento: PRESS_RELEASE
+    abilitata: true
+
+# Tassi di policy: non esiste una fonte unica pubblica e affidabile in formato
+# machine-readable per tutte le banche centrali. Sono quindi gestiti come tabella
+# aggiornabile via POST /api/v1/admin/rates e mostrati in dashboard con la data
+# di ultimo aggiornamento. Se il dato e' piu' vecchio di `giorni_staleness`
+# il Rate Differential Score viene penalizzato in confidenza.
+tassi_policy:
+  giorni_staleness: 45
+  # Valori iniziali di bootstrap. VANNO VERIFICATI E AGGIORNATI dall'operatore:
+  # sono un punto di partenza, non un dato in tempo reale.
+  bootstrap:
+    USD: {tasso: 4.00, banca: FED,  aggiornato: "2025-12-10", fonte: "manuale-bootstrap"}
+    EUR: {tasso: 2.00, banca: BCE,  aggiornato: "2025-12-18", fonte: "manuale-bootstrap"}
+    GBP: {tasso: 4.00, banca: BOE,  aggiornato: "2025-12-18", fonte: "manuale-bootstrap"}
+    JPY: {tasso: 0.50, banca: BOJ,  aggiornato: "2025-12-19", fonte: "manuale-bootstrap"}
+    AUD: {tasso: 3.60, banca: RBA,  aggiornato: "2025-12-09", fonte: "manuale-bootstrap"}
+    CAD: {tasso: 2.25, banca: BOC,  aggiornato: "2025-12-10", fonte: "manuale-bootstrap"}
+    CHF: {tasso: 0.00, banca: SNB,  aggiornato: "2025-12-11", fonte: "manuale-bootstrap"}
+    NZD: {tasso: 2.25, banca: RBNZ, aggiornato: "2025-11-26", fonte: "manuale-bootstrap"}
