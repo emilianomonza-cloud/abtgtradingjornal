@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storico — Forex Factory Calendar</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#151a21; --panel2:#1b222b; --line:#242c37;
+    --txt:#e6ebf2; --dim:#8b97a8; --dim2:#5f6b7c;
+    --acc:#4d9fff; --ok:#2ecc71; --warn:#f0a742; --err:#e5544b;
+    --hi:#e5544b; --me:#f0a742; --lo:#f5e97a; --ho:#7b8798;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;
+         align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--panel)}
+  h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px}
+  .sub{color:var(--dim2);font-size:11px}
+  main{padding:16px 18px 60px;max-width:1500px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;
+         padding:14px;margin-bottom:14px}
+  .panel h2{font-size:11px;text-transform:uppercase;letter-spacing:.9px;
+            color:var(--dim);margin:0 0 10px;font-weight:600}
+
+  /* dropzone */
+  #drop{border:1.5px dashed var(--line);border-radius:8px;padding:26px 18px;
+        text-align:center;color:var(--dim);cursor:pointer;transition:.15s;background:var(--panel2)}
+  #drop:hover,#drop.over{border-color:var(--acc);color:var(--txt);background:#1d2733}
+  #drop b{color:var(--txt)}
+  #drop code{font-family:var(--mono);font-size:11px;color:var(--dim2)}
+
+  /* log */
+  #log{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .msg{border-left:3px solid var(--line);padding:7px 10px;border-radius:0 5px 5px 0;
+       background:var(--panel2);font-size:12px}
+  .msg.ok{border-color:var(--ok)} .msg.warn{border-color:var(--warn)} .msg.err{border-color:var(--err)}
+  .msg .t{font-weight:600} .msg .d{color:var(--dim);margin-top:3px;font-size:11px}
+  .msg code{font-family:var(--mono);font-size:11px;background:#0c1015;padding:1px 5px;border-radius:3px}
+  .badge{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;
+         border-radius:3px;border:1px solid var(--line);color:var(--dim);margin-left:6px;vertical-align:1px}
+  .badge.a{border-color:#2b6b45;color:#63d296} .badge.b{border-color:#2b5a6b;color:#6bc4d2}
+  .badge.c{border-color:#6b5a2b;color:#d2b26b}
+
+  /* stats */
+  .stats{display:flex;gap:0;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .stat{flex:1 1 120px;padding:11px 14px;border-right:1px solid var(--line);background:var(--panel)}
+  .stat:last-child{border-right:0}
+  .stat .k{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim2)}
+  .stat .v{font-size:19px;font-family:var(--mono);margin-top:2px}
+
+  /* controls */
+  .ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .f{display:flex;flex-direction:column;gap:4px}
+  .f label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--dim2)}
+  input,select,button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+                      border-radius:5px;padding:6px 9px;font:inherit;font-size:12px;outline:none}
+  input:focus,select:focus{border-color:var(--acc)}
+  button{cursor:pointer}
+  button:hover{border-color:var(--acc);color:#fff}
+  button.p{background:var(--acc);border-color:var(--acc);color:#04101e;font-weight:600}
+  button.p:hover{filter:brightness(1.12)}
+  button.d{border-color:#4a2b2b;color:#e08b85}
+  button.d:hover{border-color:var(--err);color:#fff}
+  .chips{display:flex;gap:5px;flex-wrap:wrap}
+  .chip{padding:4px 9px;border:1px solid var(--line);border-radius:20px;cursor:pointer;
+        font-size:11px;font-family:var(--mono);color:var(--dim);user-select:none;background:var(--panel2)}
+  .chip.on{background:#1b2e45;border-color:var(--acc);color:#fff}
+
+  /* table */
+  .wrap{overflow:auto;max-height:62vh;border:1px solid var(--line);border-radius:8px}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  thead th{position:sticky;top:0;background:#1a212a;z-index:2;text-align:left;
+           padding:8px 10px;border-bottom:1px solid var(--line);font-size:10px;
+           text-transform:uppercase;letter-spacing:.7px;color:var(--dim);cursor:pointer;white-space:nowrap}
+  thead th:hover{color:#fff}
+  thead th .ar{color:var(--acc)}
+  td{padding:6px 10px;border-bottom:1px solid #1c232c;white-space:nowrap}
+  tbody tr:hover{background:#171e26}
+  .mono{font-family:var(--mono)}
+  .imp{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:0}
+  .imp.high{background:var(--hi)} .imp.medium{background:var(--me)}
+  .imp.low{background:var(--lo)} .imp.holiday{background:var(--ho)}
+  .cur{font-family:var(--mono);font-weight:600}
+  .num{text-align:right;font-family:var(--mono)}
+  .bw1{color:var(--ok)} .bw2{color:var(--err)}
+  .ttl{max-width:380px;overflow:hidden;text-overflow:ellipsis}
+  .approx{color:var(--warn);font-size:10px;margin-left:5px}
+  .empty{padding:40px;text-align:center;color:var(--dim2)}
+  .foot{margin-top:8px;color:var(--dim2);font-size:11px;display:flex;
+        justify-content:space-between;flex-wrap:wrap;gap:8px}
+  details{margin-top:12px} summary{cursor:pointer;color:var(--dim);font-size:11px}
+  details p{color:var(--dim);font-size:11.5px;line-height:1.6;margin:8px 0}
+  details code{font-family:var(--mono);background:#0c1015;padding:1px 5px;border-radius:3px;font-size:11px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Storico — Forex Factory Calendar</h1>
+  <span class="sub">import locale · nessuna richiesta di rete · dedup per <code style="font-family:var(--mono)">event id</code></span>
+</header>
+
+<main>
+
+<div class="panel">
+  <h2>Import</h2>
+  <div id="drop">
+    Trascina qui i file, o <b>clicca per scegliere</b><br>
+    <code>.json</code> prodotto da estrai_forexfactory.js &nbsp;·&nbsp; <code>.html</code> salvato con Ctrl+S
+    <input type="file" id="file" multiple accept=".json,.html,.htm,.mhtml" style="display:none">
+  </div>
+  <div id="log"></div>
+</div>
+
+<div class="panel" id="statsPanel" style="display:none">
+  <h2>Dataset</h2>
+  <div class="stats" id="stats"></div>
+</div>
+
+<div class="panel" id="filtersPanel" style="display:none">
+  <h2>Filtri</h2>
+  <div class="ctl">
+    <div class="f"><label>Dal</label><input type="date" id="from"></div>
+    <div class="f"><label>Al</label><input type="date" id="to"></div>
+    <div class="f"><label>Cerca</label><input type="text" id="q" placeholder="es. Non-Farm" size="20"></div>
+    <div class="f"><label>Fuso di visualizzazione</label>
+      <select id="tz">
+        <option value="0">UTC / GMT</option>
+        <option value="60">UTC+1</option>
+        <option value="120" selected>UTC+2 (Roma estiva)</option>
+        <option value="-240">UTC-4 (NY estiva)</option>
+        <option value="-300">UTC-5 (NY invernale)</option>
+        <option value="local">Fuso di questo computer</option>
+      </select>
+    </div>
+    <div class="f"><label>&nbsp;</label><button id="reset">Azzera filtri</button></div>
+  </div>
+  <div class="ctl" style="margin-top:12px">
+    <div class="f"><label>Impatto</label><div class="chips" id="impChips"></div></div>
+  </div>
+  <div class="ctl" style="margin-top:12px">
+    <div class="f"><label>Valuta</label><div class="chips" id="curChips"></div></div>
+  </div>
+</div>
+
+<div class="panel" id="tablePanel" style="display:none">
+  <h2>Eventi</h2>
+  <div class="wrap">
+    <table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="foot">
+    <span id="count"></span>
+    <span style="display:flex;gap:8px">
+      <button id="csv">Esporta CSV</button>
+      <button id="json" class="p">Salva dataset (.json)</button>
+      <button id="clear" class="d">Svuota</button>
+    </span>
+  </div>
+</div>
+
+<details>
+  <summary>Come funziona l'import — e perché la tabella HTML non viene letta</summary>
+  <p><b>Percorso A — <code>.json</code> (schema <code>ff-calendar/1</code>).</b>
+     Prodotto da <code>estrai_forexfactory.js</code>. Ogni evento porta <code>ts</code>:
+     timestamp UNIX assoluto in UTC. Nessuna ambiguità di fuso.</p>
+  <p><b>Percorso B — <code>.html</code> salvato con Ctrl+S.</b>
+     La pagina di Forex Factory contiene uno <code>&lt;script&gt;</code> inline con
+     <code>window.calendarComponentStates[N] = { days: [...] }</code>: lo stesso identico JSON,
+     con gli stessi timestamp UNIX assoluti. L'import estrae quello.
+     <b>Non serve impostare il fuso del sito su GMT prima di salvare:</b> il fuso influenza solo
+     le etichette visive, non i timestamp. Fedeltà identica al percorso A.</p>
+  <p><b>Percorso C — parsing della tabella HTML: non implementato, di proposito.</b>
+     Tre motivi misurati sulla pagina reale: (1) la tabella è renderizzata in modo pigro —
+     nel DOM salvato ci sono ~52 righe su 801 eventi, quindi il parsing perderebbe il 93% dei dati;
+     (2) i titoli seguono la lingua dell'interfaccia, quindi non sono confrontabili tra file;
+     (3) la riga di intestazione del giorno non contiene l'anno, che andrebbe indovinato.
+     Se un file non espone né A né B, l'import restituisce <code>422</code> col motivo — non zero eventi.</p>
+  <p><b>Dedup.</b> Chiave = <code>id</code> evento Forex Factory, stabile tra range diversi.
+     Reimportare lo stesso periodo non duplica nulla; un evento già presente viene aggiornato
+     solo se la nuova versione porta un <code>actual</code> che prima mancava.</p>
+  <p><b>Orario approssimato.</b> Gli eventi marcati <span class="approx">≈</span> hanno
+     <code>timeApprox</code> = true (All Day / Tentative): il timestamp indica il giorno,
+     non l'ora effettiva di rilascio. Non usarli per logiche intraday.</p>
+</details>
+
+</main>
+
+<script>
+"use strict";
+
+/* ==========================================================================
+   STATO
+   ========================================================================== */
+const DB = new Map();          // id -> evento normalizzato
+let SOURCES = [];              // metadati dei file importati
+let sortKey = "ts", sortDir = 1;
+const filters = { from:"", to:"", q:"", imp:new Set(), cur:new Set() };
+
+/* ==========================================================================
+   ERRORI TIPIZZATI  (semantica 422: motivo esplicito, mai silenzio)
+   ========================================================================== */
+class ImportError extends Error {
+  constructor(code, reason, detail){ super(reason); this.status=422; this.code=code;
+    this.reason=reason; this.detail=detail||""; }
+}
+
+/* ==========================================================================
+   PARSER
+   ========================================================================== */
+
+// Scanner a parentesi bilanciate, consapevole di stringhe ed escape.
+function sliceBalanced(text, start){
+  const open = text[start];
+  const close = open === "[" ? "]" : "}";
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < text.length; i++){
+    const c = text[i];
+    if (inStr){
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"'){ inStr = true; continue; }
+    if (c === open) depth++;
+    else if (c === close){ depth--; if (depth === 0) return text.slice(start, i + 1); }
+  }
+  return null;
+}
+
+// Normalizza un evento grezzo dello stato Forex Factory.
+function normalize(e){
+  if (!e) return null;
+  // `dateline` = stato grezzo Forex Factory · `ts` = schema ff-calendar/1
+  const ts = typeof e.dateline === "number" ? e.dateline
+           : typeof e.ts       === "number" ? e.ts
+           : null;
+  if (ts === null || !Number.isFinite(ts)) return null;
+  if (e.id === undefined || e.id === null) return null;
+  return {
+    id: e.id, ebaseId: e.ebaseId ?? null, ts: ts,
+    currency: e.currency || null, country: e.country || null,
+    title: e.title || e.name || e.prefixedName || null,
+    impact: e.impact || e.impactName || null,
+    timeLabel: e.timeLabel || null,
+    timeApprox: !!(e.timeApprox || e.timeMasked),
+    actual:   e.actual   === "" ? null : (e.actual   ?? null),
+    forecast: e.forecast === "" ? null : (e.forecast ?? null),
+    previous: e.previous === "" ? null : (e.previous ?? null),
+    revision: e.revision === "" ? null : (e.revision ?? null),
+    actualBetterWorse: e.actualBetterWorse ?? 0,
+    revisionBetterWorse: e.revisionBetterWorse ?? 0
+  };
+}
+
+// PERCORSO A — .json schema ff-calendar/1
+function parseJson(text, name){
+  let obj;
+  try { obj = JSON.parse(text); }
+  catch (err){ throw new ImportError("json_malformed",
+    "Il file non è JSON valido.", String(err.message).slice(0,140)); }
+
+  if (Array.isArray(obj)) obj = { events: obj };
+  if (!obj || typeof obj !== "object")
+    throw new ImportError("json_shape", "JSON valido ma non è un oggetto né un array.");
+
+  if (obj.schema && !/^ff-calendar\//.test(obj.schema))
+    throw new ImportError("schema_unknown",
+      "Schema non riconosciuto: " + obj.schema, "Atteso ff-calendar/1.");
+
+  // supporta sia {events:[...]} sia lo stato grezzo {days:[{events:[...]}]}
+  let raw = null;
+  if (Array.isArray(obj.events)) raw = obj.events;
+  else if (Array.isArray(obj.days)) raw = obj.days.flatMap(d => d.events || []);
+
+  if (!raw)
+    throw new ImportError("no_events_key",
+      "Nessuna chiave `events` né `days` nel JSON.",
+      "Chiavi trovate: " + Object.keys(obj).slice(0,10).join(", "));
+
+  const events = raw.map(normalize).filter(Boolean);
+  if (!events.length)
+    throw new ImportError("zero_events",
+      "Il file contiene 0 eventi utilizzabili.",
+      raw.length + " voci grezze, nessuna con `dateline`/`ts` numerico.");
+
+  return { path:"A", pathLabel:"JSON (stato, timestamp assoluti)", events, meta:obj };
+}
+
+// PERCORSO B — .html salvato: estrae lo <script> inline con lo stato
+function parseHtml(text, name){
+  if (/^\s*(From|MIME-Version|Content-Type):/i.test(text.slice(0,200)) && /multipart\/related/i.test(text.slice(0,2000)))
+    throw new ImportError("mhtml_unsupported",
+      "Il file è un archivio MHTML, non HTML.",
+      "In Chrome salva con Ctrl+S scegliendo \"Pagina web, completa\" o \"Solo HTML\", non \"Singolo file\".");
+
+  const re = /window\.calendarComponentStates\s*\[\s*\d+\s*\]\s*=\s*\{\s*days\s*:\s*/g;
+  let m, blocks = [];
+  while ((m = re.exec(text)) !== null){
+    const at = m.index + m[0].length;
+    if (text[at] !== "[") continue;
+    const chunk = sliceBalanced(text, at);
+    if (chunk) blocks.push(chunk);
+  }
+
+  if (!blocks.length){
+    const looksFF = /forexfactory/i.test(text) || /calendar__row/.test(text);
+    throw new ImportError("state_not_found",
+      looksFF
+        ? "È una pagina Forex Factory, ma lo stato `calendarComponentStates` non c'è."
+        : "Nessuno stato `calendarComponentStates` trovato: non sembra una pagina calendario di Forex Factory.",
+      looksFF
+        ? "Possibili cause: pagina salvata prima del caricamento completo, oppure il sito ha cambiato struttura. La tabella HTML non viene usata come ripiego: nel DOM salvato è presente solo una frazione delle righe."
+        : "Attesa una pagina salvata da forexfactory.com/calendar.");
+  }
+
+  // il blocco più grande è quello del calendario principale
+  blocks.sort((a,b) => b.length - a.length);
+  let days;
+  try { days = JSON.parse(blocks[0]); }
+  catch (err){ throw new ImportError("state_malformed",
+    "Stato trovato ma non parsabile come JSON.", String(err.message).slice(0,140)); }
+
+  const events = days.flatMap(d => d.events || []).map(normalize).filter(Boolean);
+  if (!events.length)
+    throw new ImportError("zero_events",
+      "Stato trovato ma con 0 eventi.",
+      days.length + " giorni, nessun evento con `dateline`.");
+
+  return { path:"B", pathLabel:"HTML salvato (script inline, timestamp assoluti)", events, meta:{ days: days.length } };
+}
+
+/* ==========================================================================
+   IMPORT
+   ========================================================================== */
+async function importFile(file){
+  const text = await file.text();
+  const isJson = /\.json$/i.test(file.name) || /^\s*[\{\[]/.test(text.slice(0,64));
+  const res = isJson ? parseJson(text, file.name) : parseHtml(text, file.name);
+
+  let added = 0, updated = 0, dup = 0;
+  for (const e of res.events){
+    const prev = DB.get(e.id);
+    if (!prev){ DB.set(e.id, e); added++; }
+    else if (prev.actual === null && e.actual !== null){ DB.set(e.id, e); updated++; }
+    else dup++;
+  }
+
+  const ts = res.events.map(e => e.ts);
+  const info = {
+    file: file.name, path: res.path, pathLabel: res.pathLabel,
+    total: res.events.length, added, updated, dup,
+    approx: res.events.filter(e => e.timeApprox).length,
+    from: isoDay(Math.min(...ts)), to: isoDay(Math.max(...ts))
+  };
+  SOURCES.push(info);
+  return info;
+}
+
+async function handleFiles(list){
+  for (const f of Array.from(list)){
+    try {
+      const i = await importFile(f);
+      log("ok",
+        f.name + ' <span class="badge ' + i.path.toLowerCase() + '">percorso ' + i.path + '</span>',
+        i.pathLabel + " · <b>" + i.total + "</b> eventi letti · <b>" + i.added + "</b> nuovi · " +
+        i.updated + " aggiornati · " + i.dup + " già presenti · range " +
+        i.from + " → " + i.to + (i.approx ? " · " + i.approx + " con orario approssimato" : ""));
+    } catch (err){
+      if (err instanceof ImportError)
+        log("err", f.name + " — <code>422 " + err.code + "</code>",
+            "<b>" + esc(err.reason) + "</b>" + (err.detail ? "<br>" + esc(err.detail) : ""));
+      else
+        log("err", f.name + " — errore inatteso", esc(String(err && err.message || err)));
+    }
+  }
+  render();
+}
+
+/* ==========================================================================
+   UI
+   ========================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
+const isoDay = ts => new Date(ts*1000).toISOString().slice(0,10);
+
+function log(kind, title, detail){
+  const d = document.createElement("div");
+  d.className = "msg " + kind;
+  d.innerHTML = '<div class="t">' + title + '</div>' + (detail ? '<div class="d">' + detail + '</div>' : "");
+  $("log").appendChild(d);
+}
+
+function tzOffset(){
+  const v = $("tz").value;
+  return v === "local" ? -new Date().getTimezoneOffset() : Number(v);
+}
+function fmt(ts){
+  const d = new Date((ts + tzOffset()*60) * 1000);
+  const p = n => String(n).padStart(2,"0");
+  return d.getUTCFullYear() + "-" + p(d.getUTCMonth()+1) + "-" + p(d.getUTCDate()) +
+         " " + p(d.getUTCHours()) + ":" + p(d.getUTCMinutes());
+}
+
+const COLS = [
+  { k:"ts",       t:"Data / ora",  r:e => '<span class="mono">' + fmt(e.ts) + '</span>' +
+                                          (e.timeApprox ? '<span class="approx" title="All Day / Tentative">≈</span>' : "") },
+  { k:"currency", t:"Val",  r:e => '<span class="cur">' + esc(e.currency||"") + '</span>' },
+  { k:"impact",   t:"Imp",  r:e => '<span class="imp ' + (e.impact||"") + '" title="' + esc(e.impact||"") + '"></span>' },
+  { k:"title",    t:"Evento", r:e => '<div class="ttl" title="' + esc(e.title||"") + '">' + esc(e.title||"") + '</div>' },
+  { k:"actual",   t:"Actual", c:"num", r:e => e.actual === null ? '<span style="color:var(--dim2)">—</span>'
+      : '<span class="' + (e.actualBetterWorse===1?"bw1":e.actualBetterWorse===2?"bw2":"") + '">' + esc(e.actual) + '</span>' },
+  { k:"forecast", t:"Forecast", c:"num", r:e => esc(e.forecast ?? "—") },
+  { k:"previous", t:"Previous", c:"num", r:e => esc(e.previous ?? "—") },
+  { k:"id",       t:"ID", c:"num", r:e => '<span class="mono" style="color:var(--dim2)">' + e.id + '</span>' }
+];
+
+function apply(){
+  const fromTs = filters.from ? Date.parse(filters.from + "T00:00:00Z")/1000 : -Infinity;
+  const toTs   = filters.to   ? Date.parse(filters.to   + "T23:59:59Z")/1000 :  Infinity;
+  const q = filters.q.trim().toLowerCase();
+  let out = [...DB.values()].filter(e =>
+    e.ts >= fromTs && e.ts <= toTs &&
+    (!filters.imp.size || filters.imp.has(e.impact)) &&
+    (!filters.cur.size || filters.cur.has(e.currency)) &&
+    (!q || (e.title||"").toLowerCase().includes(q)));
+  out.sort((a,b) => {
+    const x = a[sortKey], y = b[sortKey];
+    if (x === y) return a.ts - b.ts;
+    if (x === null || x === undefined) return 1;
+    if (y === null || y === undefined) return -1;
+    return (typeof x === "number" ? x - y : String(x).localeCompare(String(y))) * sortDir;
+  });
+  return out;
+}
+
+function chips(hostId, values, set){
+  const host = $(hostId); host.innerHTML = "";
+  values.forEach(v => {
+    const c = document.createElement("span");
+    c.className = "chip" + (set.has(v) ? " on" : "");
+    c.textContent = v;
+    c.onclick = () => { set.has(v) ? set.delete(v) : set.add(v); render(); };
+    host.appendChild(c);
+  });
+}
+
+function render(){
+  const n = DB.size;
+  ["statsPanel","filtersPanel","tablePanel"].forEach(i => $(i).style.display = n ? "" : "none");
+  if (!n) return;
+
+  const all = [...DB.values()];
+  const ts = all.map(e => e.ts);
+  const hi = all.filter(e => e.impact === "high").length;
+  $("stats").innerHTML = [
+    ["Eventi", n.toLocaleString("it-IT")],
+    ["Alto impatto", hi.toLocaleString("it-IT")],
+    ["Con actual", all.filter(e => e.actual !== null).length.toLocaleString("it-IT")],
+    ["Valute", new Set(all.map(e => e.currency)).size],
+    ["Dal", isoDay(Math.min(...ts))],
+    ["Al", isoDay(Math.max(...ts))],
+    ["File importati", SOURCES.length]
+  ].map(([k,v]) => '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>').join("");
+
+  chips("impChips", ["high","medium","low","holiday"].filter(i => all.some(e => e.impact === i)), filters.imp);
+  chips("curChips", [...new Set(all.map(e => e.currency))].filter(Boolean).sort(), filters.cur);
+
+  $("thead").innerHTML = COLS.map(c =>
+    '<th data-k="' + c.k + '">' + c.t +
+    (sortKey === c.k ? ' <span class="ar">' + (sortDir>0 ? "▲" : "▼") + '</span>' : "") + '</th>').join("");
+  $("thead").querySelectorAll("th").forEach(th => th.onclick = () => {
+    const k = th.dataset.k;
+    if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = 1; }
+    render();
+  });
+
+  const rows = apply();
+  const MAX = 3000;
+  $("tbody").innerHTML = rows.length
+    ? rows.slice(0, MAX).map(e =>
+        "<tr>" + COLS.map(c => '<td class="' + (c.c||"") + '">' + c.r(e) + "</td>").join("") + "</tr>").join("")
+    : '<tr><td colspan="' + COLS.length + '" class="empty">Nessun evento con questi filtri.</td></tr>';
+
+  $("count").innerHTML = rows.length.toLocaleString("it-IT") + " di " + n.toLocaleString("it-IT") + " eventi" +
+    (rows.length > MAX ? ' <span style="color:var(--warn)">— visualizzate le prime ' + MAX.toLocaleString("it-IT") +
+    ", l\'export contiene tutto</span>" : "");
+  window.__rows = rows;
+}
+
+function dl(blob, name){
+  const u = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = u; a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1000);
+}
+
+/* ==========================================================================
+   EVENTI DOM
+   ========================================================================== */
+$("drop").onclick = () => $("file").click();
+$("file").onchange = e => { handleFiles(e.target.files); e.target.value = ""; };
+["dragover","dragenter"].forEach(t => $("drop").addEventListener(t, e => {
+  e.preventDefault(); $("drop").classList.add("over"); }));
+["dragleave","drop"].forEach(t => $("drop").addEventListener(t, e => {
+  e.preventDefault(); $("drop").classList.remove("over"); }));
+$("drop").addEventListener("drop", e => handleFiles(e.dataTransfer.files));
+
+["from","to","q","tz"].forEach(id => $(id).oninput = () => {
+  filters.from = $("from").value; filters.to = $("to").value; filters.q = $("q").value; render(); });
+$("tz").onchange = render;
+$("reset").onclick = () => {
+  $("from").value = $("to").value = $("q").value = "";
+  filters.from = filters.to = filters.q = ""; filters.imp.clear(); filters.cur.clear(); render(); };
+
+$("csv").onclick = () => {
+  const rows = window.__rows || [];
+  if (!rows.length) return;
+  const head = ["utc","local","currency","impact","title","actual","forecast","previous","revision","timeApprox","id","ebaseId"];
+  const q = v => { const s = v === null || v === undefined ? "" : String(v);
+                   return /[",\n;]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const csv = [head.join(",")].concat(rows.map(e => [
+    new Date(e.ts*1000).toISOString(), fmt(e.ts), e.currency, e.impact, e.title,
+    e.actual, e.forecast, e.previous, e.revision, e.timeApprox, e.id, e.ebaseId
+  ].map(q).join(","))).join("\n");
+  dl(new Blob(["﻿" + csv], { type:"text/csv;charset=utf-8" }), "storico_ff.csv");
+};
+
+$("json").onclick = () => {
+  const all = [...DB.values()].sort((a,b) => a.ts - b.ts);
+  if (!all.length) return;
+  const payload = { schema:"ff-calendar/1", source:"forexfactory.com/calendar",
+    extractedAt:new Date().toISOString(), method:"merged",
+    count:all.length, sources:SOURCES,
+    range:{ from:isoDay(all[0].ts), to:isoDay(all[all.length-1].ts) }, events:all };
+  dl(new Blob([JSON.stringify(payload)], { type:"application/json" }),
+     "ff_merged_" + payload.range.from + "_" + payload.range.to + ".json");
+};
+
+$("clear").onclick = () => {
+  if (!confirm("Svuotare il dataset? " + DB.size + " eventi verranno persi (i file sul disco restano).")) return;
+  DB.clear(); SOURCES = []; $("log").innerHTML = ""; render();
+};
+
+render();
+</script>
+</body>
+</html>

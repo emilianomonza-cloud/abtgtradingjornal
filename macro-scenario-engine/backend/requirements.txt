@@ -1,0 +1,40 @@
+# Dipendenze del Macro Scenario Engine.
+#
+# NOTA SULLE VERSIONI: sono indicate come minimo ("--minimo--"), non fissate.
+# Fissarle costringeva pip a compilare da sorgente sulle versioni di Python piu'
+# recenti (per esempio 3.14), dove i pacchetti precompilati non esistono ancora:
+# serviva un compilatore Rust/C e l'installazione falliva. Con il minimo, pip
+# sceglie l'ultima versione compatibile con il tuo Python e scarica pacchetti
+# gia' pronti.
+#
+# Nessuna di queste librerie richiede compilazione: l'installazione funziona
+# senza Visual Studio, senza Rust e senza strumenti di sviluppo.
+
+# Il codice e' compatibile sia con Starlette 0.x sia con 1.x: le pagine della
+# dashboard usano la forma TemplateResponse(request=..., name=..., context=...),
+# l'unica valida in entrambe.
+fastapi>=0.115.6
+# uvicorn "puro", senza extra [standard]: gli extra tirano dentro httptools e
+# uvloop, che vanno compilati e su Windows non servono.
+uvicorn>=0.34.0
+pydantic>=2.10.4
+pydantic-settings>=2.7.0
+SQLAlchemy>=2.0.36
+httpx>=0.28.1
+beautifulsoup4>=4.12.3
+APScheduler>=3.11.0
+PyYAML>=6.0.2
+Jinja2>=3.1.5
+python-dotenv>=1.0.1
+python-multipart>=0.0.20
+pytest>=8.3.4
+
+# --- Opzionali -------------------------------------------------------------
+# lxml rende piu' rapido il parser HTML di fallback del calendario. NON e'
+# necessario: senza, si usa il parser HTML incluso in Python. Su Python molto
+# recenti lxml puo' richiedere compilazione, quindi resta fuori dall'elenco:
+#     pip install lxml
+#
+# anthropic abilita il layer semantico via LLM (SEZIONE 3.4). Senza, il sistema
+# usa il classificatore rule-based, che e' completo e testato:
+#     pip install anthropic

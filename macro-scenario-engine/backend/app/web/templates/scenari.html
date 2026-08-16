@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Scenari — Macro Scenario Engine{% endblock %}
+
+{% block content %}
+{% if not affidabilita.campione_sufficiente %}
+<div class="notice">
+  {{ affidabilita.avviso }} Le probabilita mostrate sono stime di modello non ancora
+  validate su un campione sufficiente. Vedi <a href="/affidabilita">Affidabilita</a>.
+</div>
+{% endif %}
+
+{% for p in coppie %}
+<section class="panel" id="{{ p.coppia }}">
+  <header style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px">
+    <h1 style="margin:0">{{ p.coppia }} · orizzonte {{ p.orizzonte_etichetta }}</h1>
+    <div class="small muted">
+      generato {{ p.generato_il[:16].replace('T',' ') }} UTC ·
+      scade fra <span class="countdown" data-ts="{{ p.scade_il }}"></span> ·
+      confidenza
+      <span class="tag {{ 'ok' if p.confidenza == 'ALTA' else ('warn' if p.confidenza == 'MEDIA' else 'bad') }}">{{ p.confidenza }}</span>
+      {% if p.riscrivibile %}<span class="tag warn">SCENARIO RISCRIVIBILE</span>{% endif %}
+    </div>
+  </header>
+
+  <div class="small muted" style="margin-bottom:8px">
+    bias <strong class="{{ 'pos' if p.bias > 0 else ('neg' if p.bias < 0 else 'flat') }}">{{ '%+.1f'|format(p.bias) }}</strong>
+    ({{ p.bias_label }}) ·
+    confidenza calcolata su: {{ p.confidenza_motivazioni | join(', ') }} ·
+    rischio evento {{ '%.0f%%'|format(p.rischio_evento * 100) }}
+  </div>
+
+  <div class="grid grid-wide">
+    {% for s in p.scenari %}
+    <div class="scenario {{ 'base' if s.tipo == 'BASE' else ('alt-a' if s.tipo == 'ALT_A' else 'alt-b') }}">
+      <div class="head">
+        <div>
+          <strong>{{ s.nome }}</strong><br>
+          <span class="tag {{ 'ok' if s.direzione == 'RIALZO' else ('bad' if s.direzione == 'RIBASSO' else 'neutral') }}">
+            {{ s.direzione }}
+          </span>
+          <span class="tag">magnitudo {{ s.magnitudo }}</span>
+          <span class="tag {{ 'ok' if s.confidenza == 'ALTA' else ('warn' if s.confidenza == 'MEDIA' else 'bad') }}">
+            conf. {{ s.confidenza }}
+          </span>
+        </div>
+        <span class="prob">{{ '%.1f'|format(s.probabilita) }}%</span>
+      </div>
+      <div class="bar" style="margin:6px 0">
+        <span class="{{ 'up' if s.direzione == 'RIALZO' else ('down' if s.direzione == 'RIBASSO' else 'neutral') }}"
+              style="width: {{ s.probabilita }}%"></span>
+      </div>
+      <p class="small">{{ s.descrizione }}</p>
+
+      <h3>Driver principali</h3>
+      <ul class="tight small">
+        {% for d in s.driver %}
+        <li>
+          <strong>{{ d.sottoscore }}</strong>
+          {% if d.contributo_bias is not none %}({{ '%+.1f'|format(d.contributo_bias) }}){% endif %}
+          → favorisce {{ d.favorisce }}<br>
+          <span class="muted">{{ d.motivazione }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <details>
+        <summary>catene causali attive ({{ s.catene_causali | length }})</summary>
+        {% for c in s.catene_causali %}
+        <div class="chain">
+          <div>
+            <strong>{{ c.nome }}</strong>
+            <span class="tag">{{ c.valuta }}</span>
+            <span class="tag {{ 'ok' if c.effetto_valuta == 'APPREZZAMENTO' else 'bad' }}">{{ c.effetto_valuta }}</span>
+            <span class="muted small">intensita {{ c.intensita }}</span>
+          </div>
+          <div class="steps">{% for step in c.passi %}<span>{{ step }}</span>{% endfor %}</div>
+          <div class="muted small">trigger: {{ c.trigger }}</div>
+        </div>
+        {% endfor %}
+      </details>
+
+      <h3>Condizioni di invalidazione</h3>
+      <ul class="tight small">
+        {% for inv in s.invalidazione %}<li>{{ inv }}</li>{% endfor %}
+      </ul>
+
+      <div class="small" style="margin-top:6px">
+        <span class="tag {{ 'ok' if 'LONG' in s.suggerimento.azione else ('bad' if 'SHORT' in s.suggerimento.azione else 'warn') }}">
+          {{ s.suggerimento.azione }}
+        </span>
+        <span class="muted">{{ s.suggerimento.motivazione }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if p.eventi_rilevanti %}
+  <h3>Eventi che possono riscrivere lo scenario</h3>
+  <table>
+    <thead><tr><th>Countdown</th><th>Valuta</th><th>Evento</th><th>Impatto</th><th>Volatilita attesa</th></tr></thead>
+    <tbody>
+      {% for e in p.eventi_rilevanti %}
+      <tr>
+        <td><span class="countdown" data-ts="{{ e.timestamp_utc }}"></span></td>
+        <td><strong>{{ e.valuta }}</strong></td>
+        <td>{{ e.titolo }}</td>
+        <td class="impact-{{ e.impatto }}">{{ e.impatto }}</td>
+        <td class="muted">{{ e.volatilita_attesa }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+{% else %}
+<div class="notice bad">Nessuno scenario disponibile: eseguire <code>POST /api/v1/admin/refresh</code>.</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>document.body.dataset.refresh = "180";</script>
+{% endblock %}

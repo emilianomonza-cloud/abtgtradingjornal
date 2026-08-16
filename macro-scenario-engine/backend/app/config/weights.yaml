@@ -1,0 +1,103 @@
+# ═══════════════════════════════════════════════════════════════
+# SEZIONE 3.2 — PESI DEL MOTORE DI SCORING VALUTARIO
+# Tutti i pesi sono modificabili a caldo (POST /api/v1/admin/reload-config).
+# La somma dei pesi viene normalizzata automaticamente a 1.0.
+# ═══════════════════════════════════════════════════════════════
+
+pesi_sottoscore:
+  rate_differential: 0.25   # tassi policy, aspettative forward, guidance
+  inflation_regime: 0.20    # CPI/PPI/core vs target, trend, regime dominante
+  growth_momentum: 0.15     # PIL, PMI, occupazione, retail sales
+  surprise: 0.20            # actual vs forecast vs previous degli ultimi rilasci
+  cb_stance: 0.15           # tono comunicati/minutes/discorsi
+  external_balance: 0.05    # bilancia commerciale, termini di scambio
+
+# SEZIONE 3.1 — regime dominante per la catena INFLAZIONE.
+# HAWKISH_DOMINANT : inflazione ↑ → attese di rialzo tassi → canale capitali dominante → valuta ↑
+# CREDIBILITY_LOSS : inflazione ↑ con banca centrale bloccata → canale competitivita' dominante → valuta ↓
+# Puo' essere impostato globalmente e sovrascritto per singola valuta.
+regime_default: HAWKISH_DOMINANT
+regime_per_valuta:
+  JPY: HAWKISH_DOMINANT
+  # Esempio di override: TRY: CREDIBILITY_LOSS
+
+# SEZIONE 3.3 — decadimento temporale dell'impatto delle sorprese (half-life in giorni)
+half_life_giorni:
+  ciclici: 5      # CPI, PMI, NFP, retail sales, GDP ...
+  policy: 20      # decisioni tassi, minutes, discorsi, guidance
+  strutturali: 45 # bilancia commerciale, partite correnti
+
+# Finestra massima di look-back per gli eventi che alimentano gli score (giorni)
+lookback_giorni: 90
+
+# Soglie di classificazione della sorpresa, in unita' di deviazione storica (z)
+soglie_sorpresa:
+  big: 2.0
+  normale: 0.5
+
+# Soglie di classificazione del BIAS di coppia (valore assoluto dello score normalizzato)
+soglie_bias:
+  strong: 40
+  normale: 15
+  # Soglia oltre la quale lo scenario BASE dichiara una direzione (separata e
+  # piu' bassa dell'etichetta BULLISH/BEARISH). Misurato in rigiocata su
+  # 20.901 scenari (2007-2026): con la soglia a 15 il modello dichiarava
+  # LATERALE nel 97,6% dei casi contro ~20% di laterali reali, mentre le poche
+  # chiamate direzionali centravano il 37-42%. Non e' un numero definitivo:
+  # va rimisurato con una rigiocata dopo ogni modifica.
+  direzione: 8
+
+# SEZIONE 3.5 — parametri del generatore di scenari
+scenari:
+  # Probabilita' massima assoluta assegnabile allo scenario base: incertezza strutturale obbligatoria.
+  prob_base_max: 0.65
+  prob_base_min: 0.38
+  # Probabilita' minima per uno scenario alternativo (nessuno scenario viene mai azzerato).
+  prob_alt_min: 0.10
+  # Compressione delle probabilita' dichiarate verso il 33% (1 = nessuna
+  # compressione, 0 = tutte piatte a 1/3). Misurato in rigiocata: le
+  # probabilita' grezze dichiaravano ~45% sullo scenario base contro una
+  # frequenza reale del ~21% (scarto -24 punti su 20.885 casi). La somma dei
+  # tre scenari resta 100% per costruzione.
+  shrinkage_lambda: 0.5
+  # Ore entro le quali un evento RED imminente abbassa la confidenza di un livello
+  ore_evento_red_declassa: 24
+  # Validita' dello scenario in ore (oltre questa soglia lo scenario e' scaduto)
+  validita_ore:
+    intraday: 4
+    h24_72: 12
+    w1_4: 48
+
+# Confidenza: soglie sul punteggio interno 0-100 (qualita' dati + convergenza sotto-score)
+confidenza:
+  soglia_alta: 70
+  soglia_media: 45
+
+# SEZIONE 6 — finestre di no-trade attorno agli eventi (minuti)
+no_trade:
+  RED:
+    prima: 30
+    dopo: 15
+  ORANGE:
+    prima: 10
+    dopo: 5
+  YELLOW:
+    prima: 0
+    dopo: 0
+
+# Target di inflazione delle banche centrali (%) — usato dalla catena INFLAZIONE
+target_inflazione:
+  USD: 2.0
+  EUR: 2.0
+  GBP: 2.0
+  JPY: 2.0
+  AUD: 2.5   # punto centrale della banda 2-3% RBA
+  CAD: 2.0
+  CHF: 1.0   # "sotto il 2%", punto operativo prudenziale
+  NZD: 2.0
+
+# Peso relativo degli eventi nel Surprise Score in base all'impatto dichiarato
+peso_impatto:
+  RED: 1.0
+  ORANGE: 0.5
+  YELLOW: 0.2

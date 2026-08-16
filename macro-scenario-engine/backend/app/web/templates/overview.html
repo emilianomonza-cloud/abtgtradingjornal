@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Overview — Macro Scenario Engine{% endblock %}
+
+{% block content %}
+{% if eventi_totali == 0 %}
+<div class="notice bad">
+  <strong>Nessun dato in archivio.</strong>
+  Tutti gli score sono a zero e ogni coppia risulta NEUTRAL: non e' un'analisi,
+  e' assenza di dati. Il modello non inventa numeri quando non ha informazioni.
+  <div style="margin-top:8px">
+    <button type="button" data-azione="collect">Scarica i dati adesso</button>
+    <span class="muted small">
+      Scarica calendario economico e comunicati delle banche centrali.
+      Richiede qualche decina di secondi.
+    </span>
+  </div>
+</div>
+{% endif %}
+<section class="panel">
+  <h1>Griglia valute</h1>
+  <p class="muted small">
+    Score composito da −100 (massimamente bearish) a +100 (massimamente bullish).
+    Aggiornato il
+    {{ aggiornato_il.strftime('%d/%m %H:%M:%S') if aggiornato_il else 'n/d' }} UTC.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Valuta</th>
+        <th class="num">Score</th>
+        <th class="num">Δ 24h</th>
+        <th style="width:180px">Bias</th>
+        <th class="num">Tassi</th>
+        <th class="num">Inflazione</th>
+        <th class="num">Crescita</th>
+        <th class="num">Sorprese</th>
+        <th class="num">Stance BC</th>
+        <th class="num">Estero</th>
+        <th class="num">Qualita dati</th>
+        <th>Regime</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in valute %}
+      {% set s = v.sottoscore %}
+      <tr>
+        <td>
+          <strong>{{ v.valuta }}</strong>
+          {% if v.sintetica %}<span class="tag">derivata</span>{% endif %}
+        </td>
+        <td class="num {{ 'pos' if v.score > 0 else ('neg' if v.score < 0 else 'flat') }}">
+          {{ '%+.1f'|format(v.score) }}
+        </td>
+        <td class="num {{ 'pos' if (v.variazione_24h or 0) > 0 else ('neg' if (v.variazione_24h or 0) < 0 else 'flat') }}">
+          {{ '%+.1f'|format(v.variazione_24h) if v.variazione_24h is not none else '—' }}
+        </td>
+        <td>
+          <div class="score-bar">
+            <span class="mid"></span>
+            <span class="fill {{ 'pos' if v.score >= 0 else 'neg' }}"
+                  style="left: {{ 50 if v.score >= 0 else 50 + v.score/2 }}%;
+                         width: {{ (v.score|abs)/2 }}%;
+                         background: {{ 'var(--green)' if v.score >= 0 else 'var(--red)' }};"></span>
+          </div>
+        </td>
+        {% for key in ['rate_differential', 'inflation_regime', 'growth_momentum', 'surprise', 'cb_stance', 'external_balance'] %}
+        {% set sub = s.get(key) %}
+        <td class="num {{ 'pos' if sub and sub.valore > 0 else ('neg' if sub and sub.valore < 0 else 'flat') }}"
+            title="{{ sub.motivazione if sub else 'nessun dato' }}">
+          {{ '%+.0f'|format(sub.valore) if sub else '—' }}
+        </td>
+        {% endfor %}
+        <td class="num">{{ '%.0f%%'|format((v.qualita_dati or 0) * 100) }}</td>
+        <td class="small muted">{{ v.regime }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h1>Coppie configurate</h1>
+  <div class="grid grid-cards">
+    {% for p in coppie %}
+    {% set base = p.scenari[0] %}
+    <div class="card">
+      <header>
+        <span class="pair">{{ p.coppia }}</span>
+        <span class="tag {{ 'ok' if p.bias > 0 else ('bad' if p.bias < 0 else 'neutral') }}">
+          {{ p.bias_label }}
+        </span>
+      </header>
+      <div class="muted small">
+        bias <strong class="{{ 'pos' if p.bias > 0 else ('neg' if p.bias < 0 else 'flat') }}">{{ '%+.1f'|format(p.bias) }}</strong>
+        · score {{ p.coppia[:3] }} {{ '%+.1f'|format(p.score_base) }}
+        · score {{ p.coppia[3:6] }} {{ '%+.1f'|format(p.score_quote) }}
+      </div>
+      <div style="margin-top:8px">
+        <div class="head" style="display:flex;justify-content:space-between">
+          <span>{{ base.direzione }} · {{ base.magnitudo }}</span>
+          <strong>{{ '%.1f'|format(base.probabilita) }}%</strong>
+        </div>
+        <div class="bar" style="margin-top:4px">
+          <span class="{{ 'up' if base.direzione == 'RIALZO' else ('down' if base.direzione == 'RIBASSO' else 'neutral') }}"
+                style="width: {{ base.probabilita }}%"></span>
+        </div>
+      </div>
+      <div class="small muted" style="margin-top:6px">
+        confidenza
+        <span class="tag {{ 'ok' if p.confidenza == 'ALTA' else ('warn' if p.confidenza == 'MEDIA' else 'bad') }}">
+          {{ p.confidenza }}
+        </span>
+        {% if p.riscrivibile %}<span class="tag warn">RISCRIVIBILE</span>{% endif %}
+        · scade <span class="countdown" data-ts="{{ p.scade_il }}"></span>
+      </div>
+      {% if p.eventi_rilevanti %}
+      {% set ev = p.eventi_rilevanti[0] %}
+      <div class="small" style="margin-top:6px">
+        prossimo <span class="impact-{{ ev.impatto }}">{{ ev.impatto }}</span>
+        {{ ev.valuta }} {{ ev.titolo }} fra
+        <span class="countdown" data-ts="{{ ev.timestamp_utc }}"></span>
+      </div>
+      {% endif %}
+      <div class="small" style="margin-top:6px">
+        <a href="/scenari#{{ p.coppia }}">dettaglio scenari →</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <h1>Prossimi eventi ad alto impatto</h1>
+  {% if eventi %}
+  <table>
+    <thead>
+      <tr><th>Quando</th><th>Countdown</th><th>Valuta</th><th>Evento</th><th>Impatto</th></tr>
+    </thead>
+    <tbody>
+      {% for e in eventi %}
+      <tr>
+        <td class="muted">{{ e.ts[:16].replace('T', ' ') }}</td>
+        <td><span class="countdown" data-ts="{{ e.ts }}"></span></td>
+        <td><strong>{{ e.c }}</strong></td>
+        <td>{{ e.t }}</td>
+        <td class="impact-{{ e.im }}">{{ e.im }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Nessun evento RED/ORANGE in calendario. Verificare lo stato dei collector in <a href="/fonti">Fonti</a>.</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>document.body.dataset.refresh = "120";</script>
+{% endblock %}

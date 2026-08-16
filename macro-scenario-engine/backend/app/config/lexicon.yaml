@@ -1,0 +1,181 @@
+# ═══════════════════════════════════════════════════════════════
+# SEZIONE 3.4 — DIZIONARIO BILINGUE IT/EN PER IL CLASSIFICATORE RULE-BASED
+# Ogni voce ha un peso: il tono finale e' la somma pesata normalizzata su [-100, +100].
+# Peso positivo = HAWKISH (restrittivo → tassi ↑ → catena TASSI_CAPITALI_CAMBIO → valuta ↑)
+# Peso negativo = DOVISH  (accomodante → tassi ↓ → valuta ↓)
+# I termini sono confrontati in minuscolo, con confine di parola.
+# ═══════════════════════════════════════════════════════════════
+
+hawkish:
+  # --- inglese ---
+  "rate hike": 3.0
+  "raise rates": 3.0
+  "raising rates": 3.0
+  "further tightening": 3.5
+  "tighten": 2.5
+  "tightening": 2.5
+  "restrictive": 2.5
+  "sufficiently restrictive": 3.0
+  "higher for longer": 3.0
+  "inflation remains elevated": 2.5
+  "inflationary pressures": 2.0
+  "upside risks to inflation": 2.5
+  "price pressures persist": 2.5
+  "above target": 2.0
+  "vigilant": 1.5
+  "vigilance": 1.5
+  "premature to": 1.5
+  "not yet time to": 2.0
+  "second-round effects": 2.0
+  "wage growth remains strong": 2.0
+  "robust labour market": 1.5
+  "robust labor market": 1.5
+  "overheating": 2.5
+  "data-dependent but": 1.0
+  "reduce the balance sheet": 1.5
+  "quantitative tightening": 2.0
+  # --- italiano ---
+  "rialzo dei tassi": 3.0
+  "aumento dei tassi": 3.0
+  "stretta monetaria": 3.0
+  "politica restrittiva": 2.5
+  "restrittiva": 2.5
+  "restrittivo": 2.5
+  "pressioni inflazionistiche": 2.0
+  "inflazione elevata": 2.5
+  "sopra l'obiettivo": 2.0
+  "rischi al rialzo per l'inflazione": 2.5
+  "vigilanza": 1.5
+  "prematuro": 1.5
+  "effetti di secondo impatto": 2.0
+  "mercato del lavoro solido": 1.5
+  "surriscaldamento": 2.5
+
+dovish:
+  # --- inglese ---
+  "rate cut": -3.0
+  "cut rates": -3.0
+  "cutting rates": -3.0
+  "lower rates": -2.5
+  "easing": -2.5
+  "accommodative": -2.5
+  "stimulus": -2.0
+  "downside risks to growth": -2.5
+  "slowing economy": -2.0
+  "economic slowdown": -2.0
+  "weakening demand": -2.0
+  "disinflation": -2.0
+  "disinflationary": -2.0
+  "inflation is moving toward target": -2.5
+  "returning to target": -2.0
+  "softening labour market": -2.0
+  "softening labor market": -2.0
+  "labour market cooling": -2.0
+  "labor market cooling": -2.0
+  "rising unemployment": -2.0
+  "recession": -2.5
+  "quantitative easing": -3.0
+  "asset purchases": -2.0
+  "pause": -1.0
+  "patience": -1.0
+  "no longer restrictive": -2.5
+  # --- italiano ---
+  "taglio dei tassi": -3.0
+  "riduzione dei tassi": -2.5
+  "politica accomodante": -2.5
+  "accomodante": -2.5
+  "espansiva": -2.5
+  "stimolo": -2.0
+  "rallentamento": -2.0
+  "rischi al ribasso": -2.5
+  "disinflazione": -2.0
+  "verso l'obiettivo": -2.0
+  "recessione": -2.5
+  "acquisto di attivita": -2.0
+  "pazienza": -1.0
+
+# Modificatori: moltiplicano il peso del termine che li precede/segue entro N parole.
+negazioni:
+  finestra_parole: 4
+  termini:
+    - "not"
+    - "no"
+    - "never"
+    - "without"
+    - "unlikely"
+    - "non"
+    - "nessun"
+    - "nessuna"
+    - "senza"
+    - "improbabile"
+  moltiplicatore: -0.8
+
+intensificatori:
+  finestra_parole: 3
+  termini:
+    - "very"
+    - "significantly"
+    - "materially"
+    - "strongly"
+    - "molto"
+    - "significativamente"
+    - "fortemente"
+  moltiplicatore: 1.4
+
+# Temi riconosciuti (SEZIONE 3.4): usati per l'elenco "temi trattati"
+temi:
+  inflazione:
+    - "inflation"
+    - "cpi"
+    - "price stability"
+    - "prices"
+    - "inflazione"
+    - "prezzi"
+  crescita:
+    - "growth"
+    - "gdp"
+    - "activity"
+    - "demand"
+    - "crescita"
+    - "pil"
+    - "domanda"
+  occupazione:
+    - "employment"
+    - "labour market"
+    - "labor market"
+    - "unemployment"
+    - "jobs"
+    - "wages"
+    - "occupazione"
+    - "lavoro"
+    - "salari"
+  rischi:
+    - "risk"
+    - "uncertainty"
+    - "geopolitical"
+    - "downside"
+    - "upside"
+    - "rischio"
+    - "incertezza"
+    - "geopolitic"
+  cambio:
+    - "exchange rate"
+    - "currency"
+    - "fx"
+    - "cambio"
+    - "valuta"
+  bilancio:
+    - "balance sheet"
+    - "asset purchases"
+    - "reinvestment"
+    - "bilancio"
+    - "reinvestimenti"
+
+# Scala di conversione: punteggio grezzo → tono [-100, +100].
+# tono = 100 * tanh(punteggio_grezzo / fattore_saturazione)
+fattore_saturazione: 8.0
+
+# Soglie di etichettatura del tono
+soglie_tono:
+  hawkish: 20
+  dovish: -20

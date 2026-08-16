@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Storico — Macro Scenario Engine{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Stato dell'archivio</h1>
+  <table>
+    <tbody>
+      <tr>
+        <td>Eventi di calendario</td>
+        <td class="num"><strong>{{ eventi_totali }}</strong></td>
+        <td class="small muted">
+          {% if primo_evento and ultimo_evento %}
+            dal {{ primo_evento.strftime('%d/%m/%Y') }} al {{ ultimo_evento.strftime('%d/%m/%Y') }}
+          {% else %}
+            nessun periodo coperto
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>…con valore effettivo pubblicato</td>
+        <td class="num"><strong>{{ eventi_con_actual }}</strong></td>
+        <td class="small muted">solo questi possono produrre una sorpresa</td>
+      </tr>
+      <tr>
+        <td>Barre di prezzo importate</td>
+        <td class="num"><strong>{{ prezzi_totali }}</strong></td>
+        <td class="small muted">
+          {% if coppie_con_prezzi %}
+            {{ coppie_con_prezzi|join(', ') }}
+          {% else %}
+            nessuna coppia: senza prezzi la valutazione ex-post non parte
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>Scenari da rigiocata storica</td>
+        <td class="num"><strong>{{ scenari_rigiocati }}</strong></td>
+        <td class="small muted">marcati come ricostruiti, non come previsioni pubblicate</td>
+      </tr>
+      <tr>
+        <td>Scenari valutati (totale)</td>
+        <td class="num {{ 'pos' if scenari_valutati >= min_campione else 'neg' }}">
+          <strong>{{ scenari_valutati }}</strong>
+        </td>
+        <td class="small muted">
+          servono almeno {{ min_campione }} perche' le metriche siano informative
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel">
+  <h1>1. Storico dal terminale MT5 — fonte consigliata</h1>
+  <p class="muted small">
+    Il tuo MetaTrader 5 contiene gia' anni di calendario economico con valori
+    effettivi, consensi e revisioni. Lo script
+    <code>mql5/Scripts/CalendarHistoryExporter.mq5</code> lo esporta in un file,
+    leggendo solo il database locale del terminale: nessuna richiesta web.
+  </p>
+  <ol class="tight">
+    <li>Doppio clic su <code>installa_mql5_windows.bat</code> nella cartella del
+      progetto: installa (e dove puo' compila) su <strong>tutti</strong> i
+      terminali MT5 del PC. In alternativa a mano: copia lo script in
+      <code>MQL5\Scripts\</code> e compila con <kbd>F7</kbd> in MetaEditor.</li>
+    <li>Trascinalo su un grafico qualsiasi: parte da solo e scrive i file in
+      <code>MQL5\Files\</code> con report di copertura.</li>
+    <li>Carica qui sotto il <code>.csv</code>, il <code>.json</code> o il
+      <code>.jsonl</code> prodotti (non il <code>*_report.json</code>).</li>
+  </ol>
+  <form id="form-mt5" enctype="multipart/form-data">
+    <p>
+      <input type="file" name="file" accept=".csv,.json,.jsonl,.txt" required>
+      <input type="text" name="offset" placeholder="Offset server (es. -9)" size="16"
+             title="Offset GMT del server del broker in ore. Nel *_report.json e' observed_offset_at_export_hours. Vuoto = nessuna conversione.">
+      <button type="submit">Importa export MT5</button>
+    </p>
+    <p class="small muted">
+      Gli orari sono nel fuso del server del broker se non hai dichiarato
+      l'offset (nel <code>*_report.json</code> il valore osservato e'
+      <code>observed_offset_at_export_hours</code>). Gli eventi gia' presenti
+      vengono aggiornati, non duplicati. <strong>Un export ventennale
+      (~200.000 righe) richiede circa 5 minuti</strong>: la pagina resta in
+      attesa, non chiuderla.
+    </p>
+  </form>
+  <div id="esito-mt5"></div>
+</section>
+
+<section class="panel">
+  <h1>2. Alternativa: estrarre lo storico da Forex Factory</h1>
+  <p class="muted small">
+    Il feed pubblico copre solo la settimana corrente e l'export CSV del sito richiede
+    un account. Lo storico pero' e' visibile a chiunque apra la pagina del periodo:
+    lo si legge <strong>dal browser</strong>, senza nessuna richiesta automatica ai
+    server della fonte.
+  </p>
+
+  <ol class="tight">
+    <li>
+      Apri la pagina del periodo, per esempio
+      <code>https://www.forexfactory.com/calendar?range=aug1.2019-oct2.2019</code>
+      e scorri fino in fondo perche' la tabella si carichi tutta.
+    </li>
+    <li>Premi <kbd>F12</kbd> e vai sulla scheda <strong>Console</strong>.
+      In Chrome, la prima volta, scrivi <code>allow pasting</code> e premi Invio.</li>
+    <li>
+      Apri <a href="/static/js/estrai_forexfactory.js" target="_blank" rel="noopener">
+      <strong>estrai_forexfactory.js</strong></a>, copia tutto, incolla nella Console, Invio.
+    </li>
+    <li>Parte il download di un file <code>.json</code>. Caricalo qui sotto.</li>
+  </ol>
+
+  <p class="small muted">
+    Se preferisci non usare la Console: salva la pagina con <kbd>Ctrl</kbd>+<kbd>S</kbd>
+    e carica direttamente il file <code>.html</code>. <strong>Stessa identica fedelta'</strong>:
+    la pagina contiene uno <code>&lt;script&gt;</code> con lo stesso stato e gli stessi
+    timestamp assoluti. Non serve impostare il fuso su GMT — il fuso cambia solo le
+    etichette che vedi, non i timestamp.
+  </p>
+  <p class="small muted">
+    In Chrome scegli <em>"Pagina web, completa"</em> oppure <em>"Solo HTML"</em>:
+    <em>"Singolo file"</em> produce un archivio MHTML, che non contiene lo stato.
+    L'import lo riconosce e te lo dice.
+  </p>
+
+  <div class="notice">
+    <strong>Piu' periodi in una volta sola.</strong>
+    Apri <code>strumenti/storico.html</code> con un doppio clic (funziona anche a
+    server spento): trascini dentro tutti i <code>.json</code> dei vari trimestri,
+    li unisce deduplicando sull'id evento, ti fa controllare il dataset e ne
+    esporta uno solo da caricare qui. Utile per vedere se un periodo e' mezzo
+    vuoto <em>prima</em> che finisca in archivio.
+  </div>
+</section>
+
+<section class="panel">
+  <h1>2b. Importare il file Forex Factory</h1>
+  <form id="form-storico" enctype="multipart/form-data">
+    <p>
+      <input type="file" name="file" accept=".json,.html,.htm,.txt" required>
+      <button type="submit">Importa storico</button>
+    </p>
+    <p class="small muted">
+      Accetta il <code>.json</code> dello snippet oppure la pagina <code>.html</code> salvata.
+      Gli eventi gia' presenti vengono aggiornati, non duplicati.
+    </p>
+  </form>
+  <div id="esito-storico"></div>
+</section>
+
+<section class="panel">
+  <h1>3. Importare i prezzi</h1>
+  <p class="muted small">
+    Senza prezzi nessuno scenario puo' essere valutato, e la pagina Affidabilita' resta
+    vuota per sempre. Da MetaTrader 5: <em>Strumenti → Archivio quotazioni</em>, scegli la
+    coppia e il periodo, <em>Esporta</em> in CSV.
+  </p>
+  <form id="form-prezzi" enctype="multipart/form-data">
+    <p>
+      <input type="file" name="file" accept=".csv,.txt" required>
+      <input type="text" name="pair" placeholder="Coppia (es. EURUSD)" size="12">
+      <button type="submit">Importa prezzi</button>
+    </p>
+    <p class="small muted">
+      Accetta sia il formato generico <code>pair,timestamp,close</code> sia
+      <strong>l'export nativo di MT5</strong> (Visualizza → Simboli → seleziona la
+      coppia → scheda <em>Barre</em> → richiedi il periodo → <em>Esporta barre</em>).
+      L'export nativo non contiene il simbolo: <strong>scrivi la coppia nella
+      casella</strong> (es. EURUSD).
+    </p>
+  </form>
+  <div id="esito-prezzi"></div>
+</section>
+
+<section class="panel">
+  <h1>4. Rigiocare il passato</h1>
+  <p class="muted small">
+    Genera scenari alle date passate usando <strong>solo</strong> i dati disponibili a
+    quella data, poi li confronta con i prezzi. E' il modo per avere un campione
+    valutato senza aspettare settimane.
+  </p>
+
+  <form id="form-replay">
+    <p>
+      dal <input type="date" name="start" required>
+      al <input type="date" name="end" required>
+      passo <select name="step_hours">
+        <option value="24" selected>1 giorno</option>
+        <option value="12">12 ore</option>
+        <option value="8">8 ore</option>
+        <option value="48">2 giorni</option>
+      </select>
+      <button type="submit">Avvia rigiocata</button>
+    </p>
+    <p class="small muted">
+      Un mese a passo giornaliero produce circa 20 date × le coppie configurate.
+      L'operazione puo' richiedere qualche minuto: la pagina resta in attesa.
+    </p>
+  </form>
+  <div id="esito-replay"></div>
+
+  <div class="notice warn" style="margin-top:12px">
+    <strong>Cosa NON sono questi numeri.</strong>
+    Una rigiocata non e' un backtest di strategia e non e' un rendimento.
+    <ul class="tight" style="margin-top:6px">
+      {% for l in limiti_replay %}<li>{{ l }}</li>{% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>document.body.dataset.refresh = "0";</script>
+{% endblock %}

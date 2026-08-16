@@ -1,0 +1,16 @@
+# Ambiente e dipendenze
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Configurazione locale (mai committare le chiavi)
+backend/.env
+.env
+
+# Dati generati a runtime
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/cache/
+data/mt5/
