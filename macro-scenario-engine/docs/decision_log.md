@@ -51,3 +51,16 @@
   l'archivio esistente da 122MB dell'utente si aggiorna in place senza
   reimportare nulla. Colonne obbligatorie senza default → errore esplicito,
   mai valori inventati.
+
+2026-08-16 · CICLO 5 — Verdetto del secondo giro (35.379 scenari, banda
+  adattiva attiva su tutti): calibrazione RISOLTA (bucket dominante scarto
+  +1,1 contro -24,2), monocultura laterale rientrata (97,6%→75,1%), ma le
+  chiamate direzionali con soglia 8 hanno hit 26-29% ≈ frequenza di base:
+  la soglia abbassata ha diluito il margine che a 15 c'era (37-42%). La
+  tabella per_confidenza marginale e' risultata fuorviante per composizione
+  (i laterali sono BASSA per regola: 89% del campione). Decisione: NESSUN
+  ritocco di parametri a occhio; si costruisce lo strumento di misura —
+  per_bias (hit per fascia di |bias|, per scegliere la soglia dai dati) e
+  per_confidenza_direzionale/laterale (scala giudicata a parita' di classe).
+  Le nuove metriche leggono gli esiti gia' salvati: nessuna rigiocata
+  necessaria per ottenerle.

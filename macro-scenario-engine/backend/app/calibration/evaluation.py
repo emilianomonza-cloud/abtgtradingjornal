@@ -315,6 +315,10 @@ def evaluate_due_scenarios(session: Session, limit: int = 500) -> Dict[str, int]
 
 _BUCKETS = [(0.30, 0.40), (0.40, 0.50), (0.50, 0.65)]
 
+# Fasce di |bias| per il breakdown: attorno alle soglie in gioco (direzione 8,
+# etichetta 15) con risoluzione sufficiente a scegliere una soglia migliore.
+_BIAS_BINS = [(0, 4), (4, 8), (8, 12), (12, 16), (16, 24), (24, 100)]
+
 
 def reliability_metrics(session: Session, pair: Optional[str] = None) -> Dict[str, Any]:
     """Hit-rate, Brier score e curva di calibrazione semplificata."""
@@ -397,6 +401,73 @@ def reliability_metrics(session: Session, pair: Optional[str] = None) -> Dict[st
             "brier": round(sum(o.brier for _, o in subset) / len(subset), 3),
         }
 
+    # Confidenza separata per classe prevista. Da quando ogni LATERALE senza
+    # segnale e' BASSA per regola, la tabella marginale qui sopra confronta
+    # classi diverse, non livelli di confidenza: BASSA si riempie di laterali
+    # (misurato: 89% del campione, hit 41,9%) e ALTA di direzionali (hit piu'
+    # basso), quindi la scala sembra invertita anche quando non lo e'. Il
+    # giudizio onesto si fa a parita' di classe prevista.
+    def _confidence_split(direzionale: bool) -> Dict[str, Any]:
+        out: Dict[str, Any] = {}
+        for level in ("ALTA", "MEDIA", "BASSA"):
+            subset = [
+                (s, o)
+                for s, o in rows
+                if s.confidence == level
+                and (s.base_direction != LATERALE) == direzionale
+            ]
+            if not subset:
+                continue
+            out[level] = {
+                "campione": len(subset),
+                "hit_rate": round(
+                    sum(1 for _, o in subset if o.base_hit) / len(subset) * 100, 1
+                ),
+                "brier": round(sum(o.brier for _, o in subset) / len(subset), 3),
+            }
+        return out
+
+    per_confidenza_direzionale = _confidence_split(direzionale=True)
+    per_confidenza_laterale = _confidence_split(direzionale=False)
+
+    # Hit per fascia di |bias|: lo strumento con cui SCEGLIERE la soglia di
+    # direzione invece di indovinarla. Misurato al primo giro: soglia 15
+    # dava hit direzionale 37-42% su pochissime chiamate, soglia 8 lo ha
+    # diluito a 26-29% (pari alla frequenza di base del mercato). La soglia
+    # giusta e' quella sopra cui l'hit direzionale batte la frequenza di
+    # base realizzata — e si legge da questa tabella, non si decide a occhio.
+    per_bias: List[Dict[str, Any]] = []
+    for low, high in _BIAS_BINS:
+        gruppo = [(s, o) for s, o in rows if low <= abs(s.bias) < high]
+        etichetta = f"{low}-{high}" if high < 100 else f"{low}+"
+        if not gruppo:
+            per_bias.append(
+                {
+                    "fascia_bias": etichetta,
+                    "campione": 0,
+                    "hit_rate": None,
+                    "direzionali": 0,
+                    "hit_rate_direzionale": None,
+                }
+            )
+            continue
+        direzionali = [(s, o) for s, o in gruppo if s.base_direction != LATERALE]
+        per_bias.append(
+            {
+                "fascia_bias": etichetta,
+                "campione": len(gruppo),
+                "hit_rate": round(
+                    sum(1 for _, o in gruppo if o.base_hit) / len(gruppo) * 100, 1
+                ),
+                "direzionali": len(direzionali),
+                "hit_rate_direzionale": round(
+                    sum(1 for _, o in direzionali if o.base_hit) / len(direzionali) * 100, 1
+                )
+                if direzionali
+                else None,
+            }
+        )
+
     # La banda neutra e' adattiva: qui si dichiara quella effettivamente usata
     # sugli esiti del campione. Gli esiti valutati prima dell'introduzione
     # (colonna NULL) usavano la banda fissa e vanno rivalutati con una nuova
@@ -435,6 +506,21 @@ def reliability_metrics(session: Session, pair: Optional[str] = None) -> Dict[st
         "brier_riferimento_casuale": 0.25,
         "calibrazione": calibration,
         "per_confidenza": by_confidence,
+        "per_confidenza_direzionale": per_confidenza_direzionale,
+        "per_confidenza_laterale": per_confidenza_laterale,
+        "nota_confidenza": (
+            "La tabella per_confidenza marginale mescola le classi: i LATERALE "
+            "senza segnale sono BASSA per regola, quindi i livelli non sono "
+            "confrontabili fra loro. La scala si giudica sulle due tabelle "
+            "separate (direzionale e laterale)."
+        ),
+        "per_bias": per_bias,
+        "nota_bias": (
+            "Hit per fascia di |bias| dello scenario: serve a scegliere la "
+            "soglia di direzione dai dati. Confronta hit_rate_direzionale con "
+            "la frequenza di base della direzione realizzata (tabella "
+            "direzioni): sotto la fascia in cui la batte, meglio LATERALE."
+        ),
         "nota_metodo": (
             "Brier score binario sullo scenario base: (probabilita' − esito)^2. "
             "Esito direzionale calcolato sulla variazione percentuale della coppia "

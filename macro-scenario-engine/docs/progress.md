@@ -57,3 +57,20 @@ rigiocata completa 2007→2026 sugli stessi dati, confronto con i numeri
 sopra. Attesi: distribuzione direzioni prevista piu' vicina a quella reale,
 calibrazione bucket con scarto ridotto, per_confidenza non piu' invertita.
 I nuovi numeri decidono il prossimo giro di taratura.
+
+## 2026-08-16 — CICLO 5 (strumento di misura per il secondo giro di taratura)
+
+Secondo giro misurato (35.379 scenari): calibrazione risolta (+1,1 sul
+bucket dominante), Brier 0,238 onesto (prima era basso "barando" con
+probabilita' uniformi), laterale 75,1% previsto vs 42,1% reale. Restano:
+hit direzionale 26-29% ≈ base rate (soglia 8 troppo aggressiva) e scala di
+confidenza illeggibile per composizione. Aggiunte a /api/v1/reliability e
+alla dashboard: per_bias (hit per fascia di |bias|) e per_confidenza
+separata direzionali/laterali. Suite: 170 test verdi.
+
+PROSSIMO PASSO (utente): aggiornare solo il codice (ZIP del branch),
+riavviare, rileggere /api/v1/reliability — SENZA rifare la rigiocata — e
+incollare per_bias + per_confidenza_direzionale/laterale. Da quei numeri:
+scelta misurata della soglia di direzione ed eventuale ridefinizione del
+punteggio di confidenza. Da tenere d'occhio anche il bias rialzista nelle
+previsioni (RIALZO/RIBASSO 1,55x contro un realizzato simmetrico).

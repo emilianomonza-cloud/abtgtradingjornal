@@ -227,6 +227,74 @@ def test_laterale_senza_segnale_ha_confidenza_bassa(session):
 
 
 # --------------------------------------------------------------------------- #
+#  Strumento di misura: hit per fascia di bias e confidenza per classe
+# --------------------------------------------------------------------------- #
+
+
+def _scenario_valutato(session, *, bias, direction, confidence, hit, prob=0.4):
+    """Scenario gia' valutato, costruito direttamente per testare le metriche."""
+    g = datetime(2024, 1, 1)
+    sc = Scenario(
+        pair="EURUSD", horizon="h24_72", generated_at=g,
+        expires_at=g + timedelta(hours=12), horizon_end=g + timedelta(hours=72),
+        bias=bias, bias_label="NEUTRAL", confidence=confidence,
+        confidence_score=50.0, base_direction=direction, base_probability=prob,
+        alt_a_probability=0.3, alt_b_probability=0.3, payload={}, rewritable=False,
+    )
+    session.add(sc)
+    session.flush()
+    realized = direction if hit else ("RIBASSO" if direction != "RIBASSO" else "RIALZO")
+    session.add(ScenarioOutcome(
+        scenario_id=sc.id, evaluated_at=g + timedelta(hours=80),
+        price_start=1.0, price_end=1.01, change_pct=1.0,
+        realized_direction=realized, base_hit=hit,
+        brier=(prob - (1.0 if hit else 0.0)) ** 2, neutral_band_pct=0.4,
+    ))
+    session.flush()
+
+
+def test_hit_per_fascia_di_bias(session):
+    # Fascia 8-12: due direzionali, uno centrato. Fascia 0-4: un laterale centrato.
+    _scenario_valutato(session, bias=10.0, direction="RIALZO", confidence="MEDIA", hit=True)
+    _scenario_valutato(session, bias=-11.0, direction="RIBASSO", confidence="MEDIA", hit=False)
+    _scenario_valutato(session, bias=1.0, direction="LATERALE", confidence="BASSA", hit=True)
+
+    metrics = evaluation.reliability_metrics(session)
+    per_bias = {b["fascia_bias"]: b for b in metrics["per_bias"]}
+
+    assert per_bias["8-12"]["campione"] == 2
+    assert per_bias["8-12"]["direzionali"] == 2
+    assert per_bias["8-12"]["hit_rate_direzionale"] == 50.0
+    assert per_bias["0-4"]["campione"] == 1
+    assert per_bias["0-4"]["direzionali"] == 0
+    assert per_bias["0-4"]["hit_rate_direzionale"] is None
+    # Le fasce vuote esistono comunque, dichiarate a campione zero.
+    assert per_bias["24+"]["campione"] == 0
+    assert "soglia" in metrics["nota_bias"]
+
+
+def test_confidenza_separata_per_classe_prevista(session):
+    # Stesso livello (BASSA) su classi diverse: laterale che centra,
+    # direzionale che sbaglia. La marginale li mescola, lo split no.
+    _scenario_valutato(session, bias=1.0, direction="LATERALE", confidence="BASSA", hit=True)
+    _scenario_valutato(session, bias=9.0, direction="RIALZO", confidence="BASSA", hit=False)
+    _scenario_valutato(session, bias=20.0, direction="RIBASSO", confidence="ALTA", hit=True)
+
+    metrics = evaluation.reliability_metrics(session)
+
+    assert metrics["per_confidenza"]["BASSA"]["campione"] == 2
+    assert metrics["per_confidenza"]["BASSA"]["hit_rate"] == 50.0
+    assert metrics["per_confidenza_laterale"]["BASSA"] == {
+        "campione": 1, "hit_rate": 100.0,
+        "brier": metrics["per_confidenza_laterale"]["BASSA"]["brier"],
+    }
+    assert metrics["per_confidenza_direzionale"]["BASSA"]["hit_rate"] == 0.0
+    assert metrics["per_confidenza_direzionale"]["ALTA"]["hit_rate"] == 100.0
+    assert "LATERALE" not in metrics["per_confidenza_direzionale"].get("MEDIA", {})
+    assert metrics["nota_confidenza"]
+
+
+# --------------------------------------------------------------------------- #
 #  Migrazione dello schema sugli archivi esistenti
 # --------------------------------------------------------------------------- #
 
